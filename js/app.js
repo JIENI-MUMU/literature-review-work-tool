@@ -855,56 +855,159 @@ ${head || '（见附件）'}
   // =====================================================
   // 横向复盘
   // =====================================================
+  // 对比表可选的列（都是笔记卡里的格子）
+  const CMP_COLS = [
+    ['mType', '研究类型'], ['mSubjects', '研究对象'], ['mSample', '样本量'], ['mSource', '数据来源'],
+    ['mWhenWhere', '时间和地点'], ['mMeasure', '怎么测的'], ['rResults', '研究结果'], ['dConclusion', '作者的结论'],
+    ['aAuthorLimits', '作者自认局限'], ['bEvidence', '证据够不够'], ['bApply', '能不能搬过来'], ['bCompare', '和其他文献比'],
+    ['bGap', '留下的空白'], ['summary', '一句话总结'],
+  ];
+  const CMP_DEFAULT = ['mType', 'mSource', 'mWhenWhere', 'bGap'];
+  const lsGet = (k, dflt) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : dflt; } catch (e) { return dflt; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+
+  // 文献简称：第一作者姓 + 年份，例：Barbier 等 2021
+  function shortCite(p) {
+    const list = String(p.authors || '').split(';').map((x) => x.trim()).filter(Boolean);
+    const fam = list.length ? list[0].split(/\s+/)[0] : (p.title || '无标题').slice(0, 12);
+    return `${fam}${list.length > 1 ? ' 等' : ''} ${p.year || ''}`.trim();
+  }
+
   function renderReview() {
     const d = P();
     const rc = readCount();
     const since = rc - (d.lastReviewReadCount || 0);
-    const readPapers = projPapers().filter((p) => p.fullRead).sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+    const st = lsGet('litreview.reviewView', {});
+    let cols = Array.isArray(st.cols) && st.cols.length ? st.cols : CMP_DEFAULT.slice();
+    let qf = st.q && (st.q === 'all' || st.q === 'unsure' || st.q === 'none' || d.questions.some((q) => q.id === st.q)) ? st.q : 'all';
+    let withUnread = !!st.unread;
+    const draftKey = 'litreview.reviewDraft.' + d.id;
+    const draft = lsGet(draftKey, { consistent: '', conflict: '', missing: '', paperIds: [] });
+    const saveView = () => lsSet('litreview.reviewView', { cols, q: qf, unread: withUnread });
+
+    const qOpts = [['all', '全部问题']].concat(d.questions.map((q) => [q.id, q.code + '：' + (q.text.length > 26 ? q.text.slice(0, 26) + '…' : q.text)]), [['unsure', '暂不确定'], ['none', '未归类']]);
+
     app.innerHTML = `
       ${projHeader('review')}
-      <p class="sub">每读完 5 篇做一次。把下面几篇的笔记横着看，写三句话。几轮下来，“没人研究过”那一栏会长成你综述的论断。</p>
-      <p>目前全文已读 <b>${rc}</b> 篇，上次复盘后新读了 <b>${since}</b> 篇。</p>
+      <p class="sub">每读完 5 篇做一次：先在对比表里横着看，再写三句话。几轮下来，“没人研究过”那一栏会长成你综述的论断。<br>目前全文已读 <b>${rc}</b> 篇，上次复盘后新读了 <b>${since}</b> 篇。</p>
 
       <section class="panel">
-        <h2>横着看：已读文献的关键格子</h2>
-        ${readPapers.length ? `<div class="list" style="border:none"><table>
-          <thead><tr><th style="width:28%">文献</th><th>和其他文献比</th><th>留下的空白</th></tr></thead>
-          <tbody>${readPapers.map((p) => `<tr data-id="${p.id}"><td><div class="t-title">${esc(p.authors.split(';')[0] || '')} ${esc(p.year)}</div><div class="t-zh">${esc(p.titleZh || p.title)}</div></td>
-            <td class="t-sum">${esc(p.bCompare) || '<span class="empty-sum">没写</span>'}</td>
-            <td class="t-sum">${esc(p.bGap) || '<span class="empty-sum">没写</span>'}</td></tr>`).join('')}</tbody></table></div>`
-        : '<div class="meta-line">还没有读完全文的文献。</div>'}
+        <h2>对比表</h2>
+        <div class="cmp-tools">
+          <label class="meta-line">看哪个问题</label>
+          <select id="cmpQ">${qOpts.map(([v, t]) => `<option value="${esc(v)}" ${v === qf ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
+          <label class="chk"><input type="checkbox" id="cmpUnread" ${withUnread ? 'checked' : ''}> 也显示未读完全文的</label>
+        </div>
+        <div class="cmp-cols"><span class="meta-line">比较哪些格子：</span>${CMP_COLS.map(([k, n]) => `<label class="chip ${cols.includes(k) ? 'on' : ''}"><input type="checkbox" data-col="${k}" ${cols.includes(k) ? 'checked' : ''}>${n}</label>`).join('')}</div>
+        <p class="meta-line" style="margin:4px 0 8px">看什么：同一列里大家是不是用的同一种方法、同一种数据、同一个地方？方法一样的“一致”分量不大；“留下的空白”里重复出现的，就是缺口。</p>
+        <div class="cmp-wrap" id="cmpBox"></div>
       </section>
 
       <section class="panel">
         <h2>写这一轮的复盘</h2>
-        <div class="field">${label('reviewConsistent')}<textarea id="rv1" rows="3" placeholder="${esc(H.reviewConsistent.placeholder)}"></textarea></div>
-        <div class="field">${label('reviewConflict')}<textarea id="rv2" rows="3" placeholder="${esc(H.reviewConflict.placeholder)}"></textarea></div>
-        <div class="field">${label('reviewMissing')}<textarea id="rv3" rows="3" placeholder="${esc(H.reviewMissing.placeholder)}"></textarea></div>
-        <button class="primary" id="saveRv">保存这次复盘</button>
+        <div class="cite-bar"><span class="meta-line">点文献名插进文字里：</span><span id="citeChips"></span></div>
+        <div class="field">${label('reviewConsistent')}<textarea id="rv1" rows="3" data-k="consistent" placeholder="${esc(H.reviewConsistent.placeholder)}">${esc(draft.consistent)}</textarea></div>
+        <div class="field">${label('reviewConflict')}<textarea id="rv2" rows="3" data-k="conflict" placeholder="${esc(H.reviewConflict.placeholder)}">${esc(draft.conflict)}</textarea></div>
+        <div class="field">${label('reviewMissing')}<textarea id="rv3" rows="3" data-k="missing" placeholder="${esc(H.reviewMissing.placeholder)}">${esc(draft.missing)}</textarea></div>
+        <button class="primary" id="saveRv">保存这次复盘</button> <span class="meta-line">没写完也不会丢，草稿自动保存在这台设备上。</span>
       </section>
 
       <h2>历次复盘</h2>
       <section class="panel" id="rvList"></section>`;
 
-    app.querySelectorAll('tbody tr[data-id]').forEach((tr) => { tr.onclick = () => { location.hash = '#/paper/' + tr.dataset.id; }; });
+    const papersNow = () => projPapers()
+      .filter((p) => withUnread || p.fullRead)
+      .filter((p) => {
+        const ids = p.questionIds || [];
+        if (qf === 'all') return true;
+        if (qf === 'none') return !ids.length;
+        return ids.includes(qf);
+      })
+      .sort((a, b) => String(a.year || '').localeCompare(String(b.year || '')));
+
+    // ---- 对比表 ----
+    const drawTable = () => {
+      const ps = papersNow();
+      const box = app.querySelector('#cmpBox');
+      if (!ps.length) { box.innerHTML = `<div class="meta-line" style="padding:12px 0">这个问题下还没有${withUnread ? '' : '读完全文的'}文献。</div>`; drawChips(ps); return; }
+      const use = CMP_COLS.filter(([k]) => cols.includes(k));
+      box.innerHTML = `<table class="cmp">
+        <thead><tr><th class="cmp-first">文献</th>${use.map(([, n]) => `<th>${n}</th>`).join('')}</tr></thead>
+        <tbody>${ps.map((p) => `<tr data-id="${p.id}" class="${p.fullRead ? '' : 'unread'}">
+          <td class="cmp-first"><div class="t-title">${esc(shortCite(p))}</div><div class="t-zh">${esc(p.titleZh || p.title || '')}</div></td>
+          ${use.map(([k]) => `<td>${String(p[k] || '').trim() ? esc(p[k]) : '<span class="empty-sum">—</span>'}</td>`).join('')}
+        </tr>`).join('')}</tbody></table>`;
+      box.querySelectorAll('tbody tr').forEach((tr) => { tr.onclick = () => { location.hash = '#/paper/' + tr.dataset.id; }; });
+      drawChips(ps);
+    };
+
+    // ---- 点名文献 ----
+    let lastTa = app.querySelector('#rv1');
+    const drawChips = (ps) => {
+      const bar = app.querySelector('#citeChips');
+      bar.innerHTML = ps.length ? ps.map((p) => `<button type="button" class="chip" data-cite="${p.id}" title="${esc(p.title || '')}">${esc(shortCite(p))}</button>`).join('') : '<span class="meta-line">（对比表里没有文献）</span>';
+      bar.querySelectorAll('[data-cite]').forEach((b) => {
+        b.onmousedown = (e) => e.preventDefault(); // 不让文本框失去光标位置
+        b.onclick = () => {
+          const p = ps.find((x) => x.id === b.dataset.cite); if (!p) return;
+          const ta = lastTa; const txt = shortCite(p);
+          const st0 = ta.selectionStart ?? ta.value.length, en = ta.selectionEnd ?? ta.value.length;
+          const before = ta.value.slice(0, st0), after = ta.value.slice(en);
+          // 前面已经是空格或标点就不加“、”
+          const sep = before && !/[\s、，,。.：:；;（(“"'‘]$/.test(before) ? '、' : '';
+          ta.value = before + sep + txt + after;
+          const pos = (before + sep + txt).length;
+          ta.focus(); ta.setSelectionRange(pos, pos);
+          if (!draft.paperIds.includes(p.id)) draft.paperIds.push(p.id);
+          saveDraft();
+        };
+      });
+    };
+    const saveDraft = () => {
+      app.querySelectorAll('#rv1,#rv2,#rv3').forEach((ta) => { draft[ta.dataset.k] = ta.value; });
+      lsSet(draftKey, draft);
+    };
+    app.querySelectorAll('#rv1,#rv2,#rv3').forEach((ta) => {
+      ta.addEventListener('focus', () => { lastTa = ta; });
+      ta.addEventListener('input', saveDraft);
+    });
+
+    app.querySelector('#cmpQ').onchange = (e) => { qf = e.target.value; saveView(); drawTable(); };
+    app.querySelector('#cmpUnread').onchange = (e) => { withUnread = e.target.checked; saveView(); drawTable(); };
+    app.querySelectorAll('[data-col]').forEach((c) => {
+      c.onchange = () => {
+        cols = CMP_COLS.map(([k]) => k).filter((k) => (k === c.dataset.col ? c.checked : cols.includes(k)));
+        c.parentElement.classList.toggle('on', c.checked);
+        saveView(); drawTable();
+      };
+    });
+    drawTable();
 
     app.querySelector('#saveRv').onclick = () => {
-      const v = ['#rv1', '#rv2', '#rv3'].map((s) => app.querySelector(s).value.trim());
-      if (!v.some(Boolean)) { toast('三栏都是空的'); return; }
-      d.reviews.unshift({ id: uid(), date: new Date().toISOString(), paperCount: rc, consistent: v[0], conflict: v[1], missing: v[2] });
+      saveDraft();
+      if (![draft.consistent, draft.conflict, draft.missing].some((x) => x.trim())) { toast('三栏都是空的'); return; }
+      const used = draft.paperIds.filter((id) => [draft.consistent, draft.conflict, draft.missing].join(' ').includes(shortCite(view(D().papers.find((p) => p.id === id) || {}))));
+      d.reviews.unshift({ id: uid(), date: new Date().toISOString(), paperCount: rc, questionId: qf,
+        consistent: draft.consistent.trim(), conflict: draft.conflict.trim(), missing: draft.missing.trim(), paperIds: used });
       d.lastReviewReadCount = rc;
+      lsSet(draftKey, { consistent: '', conflict: '', missing: '', paperIds: [] });
       S.save(); toast('已保存'); renderReview(); updateBanner();
     };
 
+    // ---- 历次复盘 ----
+    const qName = (id) => (id === 'all' || !id ? '全部问题' : id === 'unsure' ? '暂不确定' : id === 'none' ? '未归类' : (d.questions.find((q) => q.id === id) || {}).code || '（已删除的问题）');
     const box = app.querySelector('#rvList');
-    box.innerHTML = d.reviews.length ? d.reviews.map((r) => `
-      <dl class="review-item">
-        <div><b>${esc(fmtDate(r.date))}</b> <span class="meta-line">（当时已读 ${r.paperCount} 篇）</span>
+    box.innerHTML = d.reviews.length ? d.reviews.map((r) => {
+      const refs = (r.paperIds || []).map((id) => D().papers.find((p) => p.id === id)).filter(Boolean);
+      return `<dl class="review-item">
+        <div><b>${esc(fmtDate(r.date))}</b> <span class="meta-line">（当时已读 ${r.paperCount} 篇 · ${esc(qName(r.questionId))}）</span>
           <button class="small danger" data-rdel="${r.id}" style="float:right">删除</button></div>
         <dt>一致的</dt><dd>${esc(r.consistent) || '—'}</dd>
         <dt>矛盾的</dt><dd>${esc(r.conflict) || '—'}</dd>
         <dt>没人研究的</dt><dd>${esc(r.missing) || '—'}</dd>
-      </dl>`).join('') : '<div class="meta-line">还没有复盘记录。</div>';
+        ${refs.length ? `<dt>提到的文献</dt><dd>${refs.map((p) => `<a href="#/paper/${p.id}" class="chip">${esc(shortCite(p))}</a>`).join(' ')}</dd>` : ''}
+      </dl>`;
+    }).join('') : '<div class="meta-line">还没有复盘记录。</div>';
     box.querySelectorAll('[data-rdel]').forEach((b) => {
       b.onclick = () => {
         if (!confirm('删除这次复盘记录？')) return;

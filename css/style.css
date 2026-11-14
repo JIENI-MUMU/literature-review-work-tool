@@ -307,3 +307,22 @@ textarea { min-height: 0; resize: none; overflow: hidden; }
   .main-col .banner { margin: 12px 16px 0; }
   .sb-more { visibility: visible; }
 }
+/* ===== 横向复盘：对比表 ===== */
+.cmp-tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+.cmp-tools select { width: auto; max-width: 320px; }
+.cmp-cols { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 4px; }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; padding: 2px 9px; border: 1px solid var(--line); border-radius: 99px; background: #fff; color: var(--muted); cursor: pointer; text-decoration: none; }
+.chip input { display: none; }
+.chip.on { border-color: var(--ink); color: var(--ink); font-weight: 600; }
+.chip:hover { border-color: var(--ink); color: var(--ink); }
+.cmp-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+table.cmp { border-collapse: separate; border-spacing: 0; min-width: 100%; font-size: 13px; }
+table.cmp th, table.cmp td { padding: 8px 10px; border-bottom: 1px solid var(--line); border-right: 1px solid #f0efea; vertical-align: top; text-align: left; min-width: 140px; max-width: 260px; white-space: pre-wrap; }
+table.cmp th { background: #fff; color: var(--muted); font-weight: 600; white-space: nowrap; position: sticky; top: 0; }
+table.cmp tbody tr { cursor: pointer; }
+table.cmp tbody tr:hover td { background: #fafafa; }
+table.cmp .cmp-first { position: sticky; left: 0; background: #fff; z-index: 1; min-width: 150px; box-shadow: 1px 0 0 var(--line); }
+table.cmp tr.unread .cmp-first { box-shadow: inset 3px 0 0 var(--red), 1px 0 0 var(--line); }
+table.cmp tbody tr:last-child td { border-bottom: none; }
+.cite-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; }
+.cite-bar .chip { color: var(--ink); }
