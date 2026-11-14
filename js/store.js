@@ -13,7 +13,10 @@
  *     sourceType,             // 'peer' | 'official' | 'grey' | 'media' | 'other' | ''
  *     questionIds: [],        // 问题 id，或 'unsure'
  *     fullRead: false,
- *     aQuestion, aMethod, aFindings, aAuthorLimits,
+ *     aQuestion,                                   // 研究问题
+ *     mType, mSubjects, mSample, mSource, mWhenWhere, mMeasure, aMethod(其他补充),  // 研究方法
+ *     rResults,                                    // 研究结果（旧字段 aFindings 自动迁移到这里）
+ *     dInterpret, dConclusion, aAuthorLimits,      // 讨论与结论
  *     bEvidence, bEvidenceConfidence ('sure' | 'unsure' | ''),
  *     bApply, bCompare, bProves, bGap,
  *     quotes: [{ text, page }],
@@ -57,7 +60,12 @@
   function normalize(d) {
     const base = emptyData();
     const out = Object.assign(base, d || {});
-    out.papers = (out.papers || []).map((p) => Object.assign({ quotes: [], questionIds: [] }, p));
+    out.papers = (out.papers || []).map((p) => {
+      p = Object.assign({ quotes: [], questionIds: [] }, p);
+      // 旧版“它查到了什么”迁移到“研究结果”
+      if (p.aFindings && !p.rResults) { p.rResults = p.aFindings; p.aFindings = ''; }
+      return p;
+    });
     return out;
   }
 

@@ -218,3 +218,8 @@ textarea { min-height: 0; resize: none; overflow: hidden; }
   .sec-nav button { border-left: none; border-bottom: 2px solid transparent; white-space: nowrap; padding: 6px 10px; }
   .sec-nav button.on { border-bottom-color: var(--ink); }
 }
+.quote-row { grid-template-columns: 1fr 110px 28px; }
+.x-btn { padding: 0; width: 28px; height: 30px; color: var(--muted); font-size: 16px; }
+.x-btn:hover { color: var(--red); border-color: var(--red); }
+.add-btn { width: 28px; height: 28px; padding: 0; font-size: 16px; }
+@media (max-width: 720px) { .quote-row { grid-template-columns: 1fr 70px 28px; } }

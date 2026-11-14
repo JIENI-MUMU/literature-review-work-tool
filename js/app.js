@@ -196,7 +196,8 @@
       id: uid(), createdAt: now, updatedAt: now,
       doi: '', title: '', titleZh: '', authors: '', year: '', journal: '', crossrefType: '',
       sourceType: '', questionIds: [], fullRead: false,
-      aQuestion: '', aMethod: '', aFindings: '', aAuthorLimits: '',
+      aQuestion: '', mType: '', mSubjects: '', mSample: '', mSource: '', mWhenWhere: '', mMeasure: '', aMethod: '',
+      rResults: '', dInterpret: '', dConclusion: '', aAuthorLimits: '',
       bEvidence: '', bEvidenceConfidence: '', bApply: '', bCompare: '', bProves: '', bGap: '',
       quotes: [], summary: '', pdfName: '',
     };
@@ -264,19 +265,45 @@
         </div>
       </section>
 
-      <section class="panel sec" data-sec="a">
-        <h2 class="sec-head">A. 它说了什么</h2>
-        <p class="part-note">照着原文写，不加评价。</p>
+      <section class="panel sec" data-sec="question">
+        <h2 class="sec-head">研究问题</h2>
+        <p class="part-note">在引言最后一段或摘要里找。照原文写，不加评价。</p>
         ${ta(p, 'aQuestion', 1)}
+      </section>
+
+      <section class="panel sec" data-sec="method">
+        <h2 class="sec-head">研究方法</h2>
+        <p class="part-note">在方法（Methods）部分找。每格几个字就够；找不到就空着，作者没写清楚本身就是局限。</p>
+        <div class="field">${label('mType')}
+          <select data-f="mType">${(window.M_TYPES || []).map((t) => `<option value="${esc(t)}" ${p.mType === t ? 'selected' : ''}>${t || '— 请选择 —'}</option>`).join('')}</select>
+        </div>
+        ${inp(p, 'mSubjects')}
+        ${inp(p, 'mSample')}
+        ${inp(p, 'mSource')}
+        ${inp(p, 'mWhenWhere')}
+        ${inp(p, 'mMeasure')}
         ${ta(p, 'aMethod', 1)}
-        ${ta(p, 'aFindings', 1)}
+      </section>
+
+      <section class="panel sec" data-sec="results">
+        <h2 class="sec-head">研究结果</h2>
+        <p class="part-note">在结果（Results）部分找。只写数据显示了什么，作者的解释放到下一项。</p>
+        ${ta(p, 'rResults', 2)}
+      </section>
+
+      <section class="panel sec" data-sec="discussion">
+        <h2 class="sec-head">讨论与结论</h2>
+        <p class="part-note">在讨论（Discussion）和结论（Conclusion）部分找。写完和“研究结果”对比：作者有没有说过头？</p>
+        ${ta(p, 'dInterpret', 1)}
+        ${ta(p, 'dConclusion', 1)}
         ${ta(p, 'aAuthorLimits', 1)}
       </section>
 
-      <section class="panel sec" data-sec="b">
-        <h2 class="sec-head">B. 我的看法</h2>
-        <p class="part-note">用大白话写你的判断。四类不必每篇都写全，能写出一两类就够。拿不准的标“不确定”。</p>
+      <section class="panel sec" data-sec="eval">
+        <h2 class="sec-head">我的评价</h2>
+        <p class="part-note">前面记的都是别人说了什么，这里轮到你。用大白话写，不必每格都填，能写出一两格就够。拿不准的标“不确定”。</p>
         <div class="field">${label('bEvidence')}
+          <div>
           <textarea data-f="bEvidence" rows="1" placeholder="${esc(H.bEvidence.placeholder)}">${esc(p.bEvidence)}</textarea>
           <div style="margin-top:8px;display:flex;gap:10px;align-items:center">
             <span class="meta-line">把握程度</span>
@@ -286,6 +313,7 @@
             </span>
             ${helpBtn('bEvidenceConfidence')}
           </div>
+          </div>
         </div>
         ${ta(p, 'bApply', 1)}
         ${ta(p, 'bCompare', 1)}
@@ -293,11 +321,11 @@
         ${ta(p, 'bGap', 1)}
       </section>
 
-      <section class="panel sec" data-sec="c">
-        <h2 class="sec-head">C. 收尾</h2>
+      <section class="panel sec" data-sec="cite">
+        <h2 class="sec-head">引用与总结</h2>
         <div class="field">${label('quotes')}
-          <div id="quotes"></div>
-          <button type="button" class="small" id="addQuote">＋ 加一条原话</button>
+          <div><div id="quotes"></div>
+          <button type="button" class="small add-btn" id="addQuote" title="再加一条原话">＋</button></div>
         </div>
         ${ta(p, 'summary', 1)}
       </section>
@@ -331,12 +359,16 @@
     // 左栏目录：点哪一项，右边只显示那一项
     const SECS = [
       ['basic', '基本信息', () => [p.title, p.authors, p.year, p.journal, p.sourceType, (p.questionIds || []).length ? 1 : ''], 6],
-      ['a', 'A. 它说了什么', () => [p.aQuestion, p.aMethod, p.aFindings, p.aAuthorLimits], 4],
-      ['b', 'B. 我的看法', () => [p.bEvidence, p.bApply, p.bCompare, p.bProves, p.bGap], 5],
-      ['c', 'C. 收尾', () => [(p.quotes || []).length ? 1 : '', p.summary], 2],
+      ['question', '研究问题', () => [p.aQuestion], 1],
+      ['method', '研究方法', () => [p.mType, p.mSubjects, p.mSample, p.mSource, p.mWhenWhere, p.mMeasure], 6],
+      ['results', '研究结果', () => [p.rResults], 1],
+      ['discussion', '讨论与结论', () => [p.dInterpret, p.dConclusion, p.aAuthorLimits], 3],
+      ['eval', '我的评价', () => [p.bEvidence, p.bApply, p.bCompare, p.bProves, p.bGap], 5],
+      ['cite', '引用与总结', () => [(p.quotes || []).some((q) => (q.text || '').trim()) ? 1 : '', p.summary], 2],
     ];
     const nav = app.querySelector('#secNav');
     let active = renderCard.lastSec || 'basic';
+    if (!['basic', 'question', 'method', 'results', 'discussion', 'eval', 'cite'].includes(active)) active = 'basic';
     // 目录只建一次，之后只更新计数和高亮（重建会吞掉点击）
     nav.innerHTML = SECS.map(([k, name]) => `<button type="button" data-go="${k}"><span>${name}</span><span class="cnt"></span></button>`).join('');
     nav.querySelectorAll('[data-go]').forEach((b) => { b.onclick = () => show(b.dataset.go); });
@@ -386,22 +418,25 @@
     // 原话
     const drawQuotes = () => {
       const box = app.querySelector('#quotes');
-      if (!p.quotes.length) { box.innerHTML = '<div class="meta-line" style="margin-bottom:8px">还没有。大多数时候应该转述，不是直接引用。</div>'; return; }
+      while (p.quotes.length < 3) p.quotes.push({ text: '', page: '' }); // 默认三个空格子
       box.innerHTML = p.quotes.map((q, i) => `
         <div class="quote-row">
           <input type="text" data-qi="${i}" data-k="text" placeholder="原话" value="${esc(q.text)}">
           <input type="text" data-qi="${i}" data-k="page" placeholder="页码（必填）" value="${esc(q.page)}">
-          <button type="button" class="small danger" data-qdel="${i}">删除</button>
+          <button type="button" class="small x-btn" data-qdel="${i}" title="删掉这一条">×</button>
         </div>`).join('');
       box.querySelectorAll('[data-qi]').forEach((el) => {
-        el.oninput = () => { p.quotes[+el.dataset.qi][el.dataset.k] = el.value; touch(); };
+        el.oninput = () => { p.quotes[+el.dataset.qi][el.dataset.k] = el.value; touch(); drawNav(); };
       });
       box.querySelectorAll('[data-qdel]').forEach((b) => {
-        b.onclick = () => { p.quotes.splice(+b.dataset.qdel, 1); drawQuotes(); touch(); };
+        b.onclick = () => { p.quotes.splice(+b.dataset.qdel, 1); drawQuotes(); touch(); drawNav(); };
       });
     };
     drawQuotes();
-    app.querySelector('#addQuote').onclick = () => { p.quotes.push({ text: '', page: '' }); drawQuotes(); touch(); drawNav(); };
+    app.querySelector('#addQuote').onclick = () => {
+      p.quotes.push({ text: '', page: '' }); drawQuotes(); touch();
+      const ins = app.querySelectorAll('#quotes [data-k="text"]'); ins[ins.length - 1].focus();
+    };
 
     app.querySelector('#btnDoi').onclick = () => fetchDoi(p);
     app.querySelector('#pdfOne').onchange = (e) => { fillFromPdf(p, e.target.files[0]); e.target.value = ''; };
@@ -412,7 +447,7 @@
     };
 
     // AI_EXTRACT_HOOK：以后如果要加“AI 抽取研究问题/方法作为初稿”，在这里加按钮。
-    // 规则：只能填 A 部分，必须标“未核实”；B 部分（我的看法）永远不自动填。
+    // 规则：只能填“研究问题/研究方法”，必须标“未核实”；“我的评价”永远不自动填。
   }
 
   function normDoi(s) {
@@ -663,7 +698,7 @@
       <section class="panel">
         <h2>横着看：已读文献的关键格子</h2>
         ${readPapers.length ? `<div class="list" style="border:none"><table>
-          <thead><tr><th style="width:28%">文献</th><th>7. 和其他文献比</th><th>9. 留下的空白</th></tr></thead>
+          <thead><tr><th style="width:28%">文献</th><th>和其他文献比</th><th>留下的空白</th></tr></thead>
           <tbody>${readPapers.map((p) => `<tr data-id="${p.id}"><td><div class="t-title">${esc(p.authors.split(';')[0] || '')} ${esc(p.year)}</div><div class="t-zh">${esc(p.titleZh || p.title)}</div></td>
             <td class="t-sum">${esc(p.bCompare) || '<span class="empty-sum">没写</span>'}</td>
             <td class="t-sum">${esc(p.bGap) || '<span class="empty-sum">没写</span>'}</td></tr>`).join('')}</tbody></table></div>`
@@ -813,10 +848,12 @@
     return D().papers.map((p) => ({
       '英文标题': p.title, '中文标题': p.titleZh, '作者': p.authors, '年份': p.year, '期刊/来源': p.journal, 'DOI': p.doi,
       '来源类型': st[p.sourceType] || '', '对应问题': (p.questionIds || []).map(qLabel).join('、'), '全文已读': p.fullRead ? '是' : '否',
-      '1 它想搞清楚什么': p.aQuestion, '2 它怎么查的': p.aMethod, '3 它查到了什么': p.aFindings, '4 作者自认局限': p.aAuthorLimits,
-      '5 我看到的局限': p.bEvidence, '把握程度': { sure: '有把握', unsure: '不确定' }[p.bEvidenceConfidence] || '',
-      '6 能不能搬过来': p.bApply, '7 和其他文献比': p.bCompare, '8 帮我证明了什么': p.bProves, '9 留下的空白': p.bGap,
-      '10 原话': (p.quotes || []).map((q) => `"${q.text}"（第${q.page || '?'}页）`).join('\n'), '11 一句话总结': p.summary,
+      '研究问题': p.aQuestion,
+      '研究类型': p.mType, '研究对象': p.mSubjects, '样本量': p.mSample, '数据来源': p.mSource, '时间和地点': p.mWhenWhere, '关键的东西怎么测的': p.mMeasure, '方法其他补充': p.aMethod,
+      '研究结果': p.rResults, '作者怎么解释': p.dInterpret, '作者的结论和建议': p.dConclusion, '作者自认局限': p.aAuthorLimits,
+      '证据够不够（我看到的局限）': p.bEvidence, '把握程度': { sure: '有把握', unsure: '不确定' }[p.bEvidenceConfidence] || '',
+      '能不能搬过来': p.bApply, '和其他文献比': p.bCompare, '帮我证明了什么': p.bProves, '留下的空白': p.bGap,
+      '原话': (p.quotes || []).filter((q) => (q.text || '').trim()).map((q) => `"${q.text}"（第${q.page || '?'}页）`).join('\n'), '一句话总结': p.summary,
     }));
   }
   function download(name, blob) {
