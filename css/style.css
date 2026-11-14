@@ -223,3 +223,7 @@ textarea { min-height: 0; resize: none; overflow: hidden; }
 .x-btn:hover { color: var(--red); border-color: var(--red); }
 .add-btn { width: 28px; height: 28px; padding: 0; font-size: 16px; }
 @media (max-width: 720px) { .quote-row { grid-template-columns: 1fr 70px 28px; } }
+.ai-checks { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; font-size: 13px; }
+.ai-checks label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
+@media (max-width: 720px) { .ai-checks { grid-template-columns: 1fr; } }
+.card-head > span { display: inline-flex; gap: 8px; }

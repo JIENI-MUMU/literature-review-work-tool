@@ -231,7 +231,8 @@
       <div class="card-head">
         <a href="#/list">← 回到列表</a>
         <span class="meta-line">最后修改：${esc(fmtDate(p.updatedAt))}</span>
-        <button class="danger small" id="btnDel">删除这篇</button>
+        <span><button class="small" id="btnAI" title="找不到某格的内容时，生成一段提示词，拿去问 Claude">让 AI 指路</button>
+        <button class="danger small" id="btnDel">删除这篇</button></span>
       </div>
       <div id="readWarn"></div>
       <div class="card-layout">
@@ -446,8 +447,80 @@
       location.hash = '#/list';
     };
 
-    // AI_EXTRACT_HOOK：以后如果要加“AI 抽取研究问题/方法作为初稿”，在这里加按钮。
-    // 规则：只能填“研究问题/研究方法”，必须标“未核实”；“我的评价”永远不自动填。
+    app.querySelector('#btnAI').onclick = () => openAiGuide(p);
+
+    // AI_EXTRACT_HOOK：现在的“让 AI 指路”只生成提示词，由用户拿去 Claude 对话里问（做法一）。
+    // 以后若改成网页里直接调用 AI（做法二），在 openAiGuide 里接 API；
+    // 规则不变：只用于 AI_FIELDS 里的“记录原文”格子，必须带原文原句和页码，“我的评价”永远不碰。
+  }
+
+  // =====================================================
+  // 让 AI 指路：生成提示词，用户拿去 Claude 对话里问
+  // AI 只告诉你“在哪一页、原文怎么说”，你自己去原文核对，再用自己的话填。
+  // “我的评价”不在这里，永远不让 AI 写。
+  // =====================================================
+  const AI_FIELDS = [
+    ['aQuestion', '研究问题', '这篇文章想回答的研究问题或研究目的'],
+    ['mType', '研究方法', '用的是哪种研究方法（访谈、问卷、案例研究、实验、二手数据分析、综述等）'],
+    ['mSubjects', '研究方法', '研究对象是谁、是什么'],
+    ['mSample', '研究方法', '样本量：多少人、多少机构、多少个案例或多少条数据'],
+    ['mSource', '研究方法', '数据从哪里来；是研究对象自己报告的，还是客观记录的'],
+    ['mWhenWhere', '研究方法', '研究在哪个国家或地区做的，数据是哪段时间的'],
+    ['mMeasure', '研究方法', '文章的核心概念具体用什么指标或标准来衡量'],
+    ['rResults', '研究结果', '结果部分报告的主要数据（只要数据本身，不要作者的解释）'],
+    ['dInterpret', '讨论与结论', '讨论部分作者怎么解释结果'],
+    ['dConclusion', '讨论与结论', '结论部分作者的结论和建议'],
+    ['aAuthorLimits', '讨论与结论', '作者自己承认的研究局限'],
+  ];
+
+  function buildAiPrompt(p, keys) {
+    const items = AI_FIELDS.filter(([k]) => keys.includes(k));
+    const head = [p.title && `标题：${p.title}`, p.authors && `作者：${p.authors}`, p.year && `年份：${p.year}`, p.doi && `DOI：${p.doi}`].filter(Boolean).join('\n');
+    return `我在练习自己读文献、写笔记。我上传了一篇论文的 PDF：
+${head || '（见附件）'}
+
+请你只帮我“指路”，不要替我写笔记。下面每一项，请按这个格式回答：
+- 出处：在哪一部分（章节名）、第几页
+- 原文：把原文里最关键的那一句照抄下来（保留英文原文，不要改写，不要翻译）
+- 提示：用一句中文告诉我这一项该注意什么，不超过 20 个字
+
+规则：
+1. 原文里没有写到的，直接回答“原文没有写”，不要猜，不要用常识补。没写清楚本身就是重要信息。
+2. 不要评价这篇文章的好坏，不要告诉我它有什么局限（作者自己承认的局限除外），不要给我写“我的看法”。
+3. 数字必须是原文里的数字，标明页码。
+
+需要指路的项目：
+${items.map(([k, sec, desc], i) => `${i + 1}. 【${sec}｜${H[k].label}】${desc}`).join('\n')}`;
+  }
+
+  function openAiGuide(p) {
+    const empty = AI_FIELDS.filter(([k]) => !String(p[k] || '').trim()).map(([k]) => k);
+    openModal(`<h3>让 AI 指路</h3>
+      <p class="meta-line">找不到某一格的内容时用。网页会生成一段提示词，你把 PDF 和提示词一起发给 Claude，它会告诉你每一项<b>在第几页、原文怎么说</b>。你翻到那一页核对，再用自己的话填。<br><b>“我的评价”不在这里，那部分要你自己写。</b></p>
+      <div class="field-label" style="margin-top:12px">要问哪几格？（默认勾选还空着的）</div>
+      <div class="ai-checks">${AI_FIELDS.map(([k, sec]) => `<label><input type="checkbox" data-ai="${k}" ${empty.includes(k) ? 'checked' : ''}> <span class="meta-line">${sec}｜</span>${esc(H[k].label)}</label>`).join('')}</div>
+      <textarea id="aiPrompt" readonly rows="8" style="margin-top:12px;font-size:12px"></textarea>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">
+        <button class="primary" id="aiCopy">复制提示词</button>
+        <a class="btn" href="https://claude.ai/new" target="_blank" rel="noopener">打开 Claude</a>
+        <span class="meta-line" id="aiMsg"></span>
+      </div>
+      <ol class="steps meta-line" style="margin-top:12px;padding-left:18px">
+        <li>点“复制提示词”</li><li>打开 Claude，上传这篇论文的 PDF，粘贴提示词，发送</li>
+        <li>按 Claude 给的页码去原文核对，<b>用自己的话</b>填进格子</li>
+      </ol>`);
+    const ta = modal.querySelector('#aiPrompt');
+    const draw = () => {
+      const keys = [...modal.querySelectorAll('[data-ai]:checked')].map((c) => c.dataset.ai);
+      ta.value = keys.length ? buildAiPrompt(p, keys) : '至少勾选一项。';
+    };
+    modal.querySelectorAll('[data-ai]').forEach((c) => { c.onchange = draw; });
+    draw();
+    modal.querySelector('#aiCopy').onclick = async () => {
+      const msg = modal.querySelector('#aiMsg');
+      try { await navigator.clipboard.writeText(ta.value); msg.textContent = '已复制，去 Claude 粘贴'; }
+      catch (e) { ta.removeAttribute('readonly'); ta.focus(); ta.select(); msg.textContent = '自动复制失败，已全选，请按 Cmd+C 复制'; }
+    };
   }
 
   function normDoi(s) {
