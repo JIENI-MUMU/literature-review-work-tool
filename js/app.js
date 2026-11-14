@@ -501,7 +501,7 @@
             <select data-f="sourceType">${SOURCE_TYPES.map(([v, t]) => `<option value="${v}" ${p.sourceType === v ? 'selected' : ''}>${t}</option>`).join('')}</select>
           </div>
           <div class="field">${label('fullRead')}
-            <label class="chk" style="color:var(--ink)"><input type="checkbox" id="fullRead" ${p.fullRead ? 'checked' : ''}> 我已经读完全文</label> <span class="unread-note" id="readNote"></span>
+            <div class="read-line"><label class="chk" style="color:var(--ink)"><input type="checkbox" id="fullRead" ${p.fullRead ? 'checked' : ''}> 我已经读完全文</label><span class="unread-note" id="readNote"></span></div>
           </div>
         </div>
         <div class="field">${label('questions')}
@@ -611,7 +611,9 @@
     // 未读提醒：只在顶部放一个小红标签，勾选框旁边一行小字，不占地方
     const drawWarn = () => {
       app.querySelector('#readWarn').innerHTML = p.fullRead ? '' : '<span class="tag red" title="勾选“全文已读”之前，不能在论文里引用">未读完 · 不能引用</span> ';
-      app.querySelector('#readNote').textContent = p.fullRead ? '' : '没勾之前，这篇不能在论文里引用';
+      const note = app.querySelector('#readNote');
+      note.textContent = p.fullRead ? '✓ 已读完，可以引用' : '没勾之前，这篇不能在论文里引用';
+      note.classList.toggle('done', !!p.fullRead);
     };
     drawWarn();
     fr.onchange = () => { p.fullRead = fr.checked; drawWarn(); touch(); updateBanner(); };
