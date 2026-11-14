@@ -326,3 +326,6 @@ table.cmp tr.unread .cmp-first { box-shadow: inset 3px 0 0 var(--red), 1px 0 0 v
 table.cmp tbody tr:last-child td { border-bottom: none; }
 .cite-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; }
 .cite-bar .chip { color: var(--ink); }
+/* 使用说明、设置放到边栏底部，同步状态上面 */
+.sb-foot { display: flex; flex-direction: column; gap: 2px; padding: 12px 0 0; border-top: 1px solid var(--line); }
+.sb-foot .sync-badge { padding: 8px 8px 0; }
