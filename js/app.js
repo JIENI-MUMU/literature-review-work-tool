@@ -191,7 +191,7 @@
     const total = projPapers().length;
     app.innerHTML = `
       ${projHeader('list')}
-      <p class="sub">共 ${total} 篇，全文已读 ${readCount()} 篇。点一行打开笔记卡，<b>右键</b>可以删除，<b>点表头</b>可以排序、筛选已读未读。<b style="color:var(--red)">左边有红线的行</b>=还没读完全文，不能引用。</p>
+      <p class="sub">共 ${total} 篇，全文已读 ${readCount()} 篇。点一行打开笔记卡，<b>右键</b>可以删除。<b style="color:var(--red)">左边有红线的行</b>=还没读完全文，不能引用。</p>
       <div class="list-tools">
         <div class="lt-cell">
           <label class="btn primary-label" style="margin:0">＋ 从 PDF 新增<input type="file" id="pdfFiles" accept=".pdf,application/pdf" multiple hidden></label>
@@ -200,7 +200,7 @@
           <label class="btn" style="margin:0">导入 Zotero CSV<input type="file" id="zoteroFile" accept=".csv,text/csv" hidden></label>
         </div>
         <div class="lt-cell"><input type="search" id="q" placeholder="搜索标题、作者、总结…" value="${esc(st.q)}"></div>
-        <div class="lt-cell"><button type="button" id="btnFilter" class="filter-btn">筛选 ▾</button><span id="filterSum" class="filter-sum"></span></div>
+        <div class="lt-cell"><button type="button" id="btnSort" class="filter-btn" title="排序">${SORT_ICON} <span id="sortLbl">最近修改</span></button><button type="button" id="btnFilter" class="filter-btn">筛选 ▾</button><span id="filterSum" class="filter-sum"></span></div>
         <div class="lt-cell"><div class="dropzone compact" id="dropZone" title="PDF 只在你电脑上读取，不会上传，也不会保存。">把 PDF 拖到这里，自动填好信息（可多篇）</div></div>
       </div>
 
@@ -214,6 +214,7 @@
     app.querySelector('#zoteroFile').onchange = (e) => importZotero(e.target.files[0]);
     app.querySelector('#q').oninput = (e) => { st.q = e.target.value; drawRows(); };
     app.querySelector('#btnFilter').onclick = (e) => { e.stopPropagation(); openFilter(e.currentTarget); };
+    app.querySelector('#btnSort').onclick = (e) => { e.stopPropagation(); openSort(e.currentTarget); };
   }
 
   // 像 Zotero 一样拖动表头之间的竖线调整列宽：左边那列变宽，右边那列变窄；宽度记在本机
@@ -275,6 +276,20 @@
     drawRows();
   }
 
+  // 排序按钮（三条线的图标）：窗口窄、表头被藏起来时也能排序
+  const SORT_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true" style="vertical-align:-2px"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="15" y2="12"/><line x1="4" y1="18" x2="10" y2="18"/></svg>';
+  const SORTS = [['updated', '最近修改'], ['yearDesc', '年份：新 → 旧'], ['yearAsc', '年份：旧 → 新'], ['author', '作者：A → Z'], ['title', '标题：A → Z']];
+  function openSort(btn) {
+    hideRowMenu();
+    const m = document.createElement('div'); m.id = 'rowMenu'; m.className = 'row-menu';
+    m.innerHTML = SORTS.map(([k, t]) => `<button type="button" data-so="${k}">${k === listState.sort ? '✓ ' : '　'}${t}</button>`).join('');
+    document.body.appendChild(m);
+    const r = btn.getBoundingClientRect();
+    m.style.left = Math.min(r.left, window.innerWidth - m.offsetWidth - 8) + 'px';
+    m.style.top = Math.min(r.bottom + 4, window.innerHeight - m.offsetHeight - 8) + 'px';
+    m.querySelectorAll('[data-so]').forEach((b) => { b.onclick = () => { listState.sort = b.dataset.so; hideRowMenu(); drawRows(); }; });
+  }
+
   // 筛选面板：年份（可多选）+ 阅读状态
   function openFilter(btn) {
     hideRowMenu();
@@ -303,6 +318,8 @@
     m.querySelector('#fpClear').onclick = () => { st.read = 'all'; st.years = []; hideRowMenu(); drawRows(); };
   }
   function drawFilterSum() {
+    const sl = document.getElementById('sortLbl');
+    if (sl) { sl.textContent = (SORTS.find(([k]) => k === listState.sort) || SORTS[0])[1]; document.getElementById('btnSort').classList.toggle('on', listState.sort !== 'updated'); }
     const el = document.getElementById('filterSum'); if (!el) return;
     const st = listState, parts = [];
     if (st.read !== 'all') parts.push(st.read === 'unread' ? '只看未读' : '只看已读');

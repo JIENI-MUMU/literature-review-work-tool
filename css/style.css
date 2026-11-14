@@ -358,3 +358,4 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 .list table.zt col.col-del { width: 0; }
 @media (max-width: 720px) { .col-grip { display: none; } .list table.zt { table-layout: auto; } .list table.zt .t-title { white-space: normal; } }
 .list table.zt .tag { white-space: nowrap; }
+#btnSort { margin-right: 6px; }
