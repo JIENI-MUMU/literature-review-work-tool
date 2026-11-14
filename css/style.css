@@ -346,3 +346,15 @@ textarea { min-height: 0; resize: none; overflow: hidden; }
 .fp-title { font-size: 12px; font-weight: 600; color: var(--muted); margin-top: 6px; }
 .fp-years { max-height: 180px; overflow-y: auto; }
 .fp-foot { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 8px; }
+/* ===== 文献列表：像 Zotero 一样可拖动列宽，每格一行，放不下就省略 ===== */
+.list table.zt { table-layout: fixed; width: 100%; }
+.list table.zt th { position: relative; overflow: hidden; text-overflow: ellipsis; }
+.list table.zt td { overflow: hidden; }
+.list table.zt .t-title, .list table.zt .t-zh, .list table.zt .t-sum, .list table.zt .td-au { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.col-grip { position: absolute; top: 0; right: -4px; width: 9px; height: 100%; cursor: col-resize; z-index: 2; }
+.col-grip::after { content: ''; position: absolute; left: 4px; top: 22%; height: 56%; border-left: 1px solid var(--line); }
+.col-grip:hover::after, body.col-resizing .col-grip::after { border-left-color: var(--ink); }
+body.col-resizing { cursor: col-resize; user-select: none; }
+.list table.zt col.col-del { width: 0; }
+@media (max-width: 720px) { .col-grip { display: none; } .list table.zt { table-layout: auto; } .list table.zt .t-title { white-space: normal; } }
+.list table.zt .tag { white-space: nowrap; }

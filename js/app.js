@@ -216,14 +216,55 @@
     app.querySelector('#btnFilter').onclick = (e) => { e.stopPropagation(); openFilter(e.currentTarget); };
   }
 
+  // 像 Zotero 一样拖动表头之间的竖线调整列宽：左边那列变宽，右边那列变窄；宽度记在本机
+  const COLW_DEFAULT = { year: 120, au: 180, read: 110 };
+  function colWidths() {
+    let w = {}; try { w = JSON.parse(localStorage.getItem('litreview.colW') || '{}'); } catch (e) {}
+    return Object.assign({}, COLW_DEFAULT, w);
+  }
+  function initGrip(g, box) {
+    g.addEventListener('click', (e) => e.stopPropagation()); // 拖完不要触发排序
+    g.addEventListener('mousedown', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      const which = g.dataset.grip; // 拖的是哪一列的右边线
+      const pair = { title: ['', 'year'], year: ['year', 'au'], au: ['au', 'read'] }[which];
+      const cols = box.querySelectorAll('colgroup col');
+      const idx = { year: 1, au: 2, read: 3 };
+      const w = colWidths(); const x0 = e.clientX; const start = Object.assign({}, w);
+      document.body.classList.add('col-resizing');
+      const move = (ev) => {
+        const dx = ev.clientX - x0, MIN = { year: 70, au: 90, read: 96 };
+        const [left, right] = pair;
+        let d = dx;
+        if (left) d = Math.max(MIN[left] - start[left], d);   // 左列不能太窄
+        d = Math.min(start[right] - MIN[right], d);           // 右列不能太窄
+        if (!left) d = Math.max(-(box.clientWidth - 320), d); // 标题列至少留一些
+        if (left) w[left] = start[left] + d;
+        w[right] = start[right] - d;
+        Object.entries(idx).forEach(([k, i]) => { cols[i].style.width = w[k] + 'px'; });
+      };
+      const up = () => {
+        document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up);
+        document.body.classList.remove('col-resizing');
+        try { localStorage.setItem('litreview.colW', JSON.stringify({ year: w.year, au: w.au, read: w.read })); } catch (e) {}
+      };
+      document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
+    });
+    g.addEventListener('dblclick', (e) => { // 双击竖线恢复默认宽度
+      e.stopPropagation();
+      try { localStorage.removeItem('litreview.colW'); } catch (er) {}
+      drawRows();
+    });
+  }
+
   function sortHead() {
     const st = listState;
     const arrow = (k) => ({ yearDesc: ' ↓', yearAsc: ' ↑' }[st.sort] && k === 'year' ? { yearDesc: ' ↓ 新→旧', yearAsc: ' ↑ 旧→新' }[st.sort] : (st.sort === k ? ' ↓' : ''));
     const readLbl = { all: '', unread: '：只看未读', read: '：只看已读' }[st.read];
-    const th = (cls, key, name, extra) => `<th class="${cls} th-sort ${extra ? 'on' : ''}" data-sort="${key}" title="点一下排序或筛选">${name}</th>`;
-    return th('', 'title', '标题' + arrow('title'), st.sort === 'title') +
-      th('col-year', 'year', '年份' + arrow('year'), st.sort.startsWith('year')) +
-      th('col-au', 'author', '作者' + arrow('author'), st.sort === 'author') +
+    const th = (cls, key, name, extra, grip) => `<th class="${cls} th-sort ${extra ? 'on' : ''}" data-sort="${key}" title="点一下排序或筛选">${name}${grip ? `<span class="col-grip" data-grip="${grip}" title="拖动调整列宽"></span>` : ''}</th>`;
+    return th('', 'title', '标题' + arrow('title'), st.sort === 'title', 'title') +
+      th('col-year', 'year', '年份' + arrow('year'), st.sort.startsWith('year'), 'year') +
+      th('col-au', 'author', '作者' + arrow('author'), st.sort === 'author', 'au') +
       th('col-read', 'read', '全文已读' + readLbl, st.read !== 'all');
   }
   function onSortClick(k) {
@@ -285,11 +326,13 @@
       const c = box.querySelector('#clrRead'); if (c) c.onclick = () => { listState.read = 'all'; listState.years = []; drawRows(); };
       return;
     }
-    box.innerHTML = `<table>
+    const cw = colWidths();
+    box.innerHTML = `<table class="zt">
+      <colgroup><col><col style="width:${cw.year}px"><col style="width:${cw.au}px"><col style="width:${cw.read}px"><col class="col-del"></colgroup>
       <thead><tr>${sortHead()}<th class="col-del"></th></tr></thead>
       <tbody>${ps.map((p) => `
         <tr class="${p.fullRead ? '' : 'unread'}" data-id="${p.id}">
-          <td><div class="t-title">${esc(p.title || '（未填标题）')}</div>${p.titleZh ? `<div class="t-zh">${esc(p.titleZh)}</div>` : ''}${p.summary ? `<div class="t-sum">→ ${esc(p.summary)}</div>` : ''}${p.bEvidenceConfidence === 'unsure' ? '<span class="tag unsure">局限待批改</span>' : ''}</td>
+          <td title="${esc(p.title || '')}"><div class="t-title">${esc(p.title || '（未填标题）')}</div>${p.titleZh ? `<div class="t-zh">${esc(p.titleZh)}</div>` : ''}${p.summary ? `<div class="t-sum">→ ${esc(p.summary)}</div>` : ''}${p.bEvidenceConfidence === 'unsure' ? '<span class="tag unsure">局限待批改</span>' : ''}</td>
           <td class="td-year">${esc(p.year)}</td>
           <td class="td-au" title="${esc(p.authors)}">${esc(shortAuthors(p.authors)) || '<span class="empty-sum">—</span>'}</td>
           <td class="td-read">${p.fullRead ? '✓<span class="m-only"> 已读</span>' : '<span class="tag red">未读</span>'}</td>
@@ -297,6 +340,7 @@
         </tr>`).join('')}</tbody></table>`;
     box.querySelectorAll('tbody tr').forEach((tr) => { tr.onclick = () => { location.hash = '#/paper/' + tr.dataset.id; }; });
     box.querySelectorAll('[data-sort]').forEach((th) => { th.onclick = () => onSortClick(th.dataset.sort); });
+    box.querySelectorAll('[data-grip]').forEach((g) => initGrip(g, box));
     // 手机上没有右键，保留一个删除按钮（电脑上隐藏）
     box.querySelectorAll('[data-del]').forEach((b) => {
       b.onclick = (e) => { e.stopPropagation(); removeFromProject(b.dataset.del); };
