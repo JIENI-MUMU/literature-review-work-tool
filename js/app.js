@@ -178,7 +178,7 @@
     }
     if (!ps.length) { box.innerHTML = '<div class="empty">没有符合筛选条件的文献。</div>'; return; }
     box.innerHTML = `<table>
-      <thead><tr><th>标题</th><th class="col-year">年份</th><th>一句话总结</th><th class="col-q">对应问题</th><th class="col-read">全文已读</th></tr></thead>
+      <thead><tr><th>标题</th><th class="col-year">年份</th><th>一句话总结</th><th class="col-q">对应问题</th><th class="col-read">全文已读</th><th class="col-del"></th></tr></thead>
       <tbody>${ps.map((p) => `
         <tr class="${p.fullRead ? '' : 'unread'}" data-id="${p.id}">
           <td><div class="t-title">${esc(p.title || '（未填标题）')}</div>${p.titleZh ? `<div class="t-zh">${esc(p.titleZh)}</div>` : ''}</td>
@@ -186,8 +186,18 @@
           <td class="t-sum">${p.summary ? esc(p.summary) : '<span class="empty-sum">还没写</span>'}${p.bEvidenceConfidence === 'unsure' ? ' <span class="tag unsure">局限待批改</span>' : ''}</td>
           <td class="col-q">${qTags(p)}</td>
           <td class="td-read">${p.fullRead ? '✓<span class="m-only"> 已读</span>' : '<span class="tag red">未读</span>'}</td>
+          <td class="td-del"><button type="button" class="del-btn" data-del="${p.id}" title="删除这篇">删除</button></td>
         </tr>`).join('')}</tbody></table>`;
     box.querySelectorAll('tbody tr').forEach((tr) => { tr.onclick = () => { location.hash = '#/paper/' + tr.dataset.id; }; });
+    box.querySelectorAll('[data-del]').forEach((b) => {
+      b.onclick = (e) => {
+        e.stopPropagation(); // 不要顺便打开这篇
+        const p = D().papers.find((x) => x.id === b.dataset.del); if (!p) return;
+        if (!confirm(`删除“${p.title || '（未填标题）'}”和它的全部笔记？删除后不能恢复。`)) return;
+        D().papers = D().papers.filter((x) => x.id !== p.id); S.save();
+        drawRows(); toast('已删除');
+      };
+    });
   }
 
   function blankPaper() {
