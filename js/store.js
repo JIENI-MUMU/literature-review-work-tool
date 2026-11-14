@@ -186,6 +186,7 @@
       safeSet(KEY, JSON.stringify(this.data));
       this.dirty = true;
       this.schedulePush();
+      this.emit(); // 让左边栏的篇数等即时更新
     },
 
     replaceAll(data) {

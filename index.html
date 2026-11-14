@@ -5,25 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>文献综述笔记</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/style.css?v=202611142239">
+  <link rel="stylesheet" href="css/style.css?v=202611142248">
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">文献综述笔记</div>
-    <select id="projSel" class="proj-sel" title="当前项目"></select>
-    <nav class="nav">
-      <a href="#/list" data-route="list">文献列表</a>
-      <a href="#/library" data-route="library">文献库</a>
-      <a href="#/questions" data-route="questions">我关心的问题</a>
-      <a href="#/review" data-route="review">横向复盘</a>
-      <a href="#/guide" data-route="guide">使用说明</a>
-      <a href="#/settings" data-route="settings">设置</a>
-    </nav>
-    <div id="syncBadge" class="sync-badge" title="同步状态"></div>
-  </header>
-
-  <div id="banner"></div>
-  <main id="app"></main>
+  <div class="shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">文献综述笔记</div>
+      <div class="sb-label">项目</div>
+      <div id="sbProjects" class="sb-projects"></div>
+      <button type="button" class="sb-new" id="sbNew">＋ 新建项目</button>
+      <div class="sb-sep"></div>
+      <a class="sb-link" href="#/library" data-route="library">文献库 <span class="sb-count" id="libCount"></span></a>
+      <a class="sb-link" href="#/guide" data-route="guide">使用说明</a>
+      <a class="sb-link" href="#/settings" data-route="settings">设置</a>
+      <div class="sb-foot"><div id="syncBadge" class="sync-badge" title="同步状态，点击打开设置"></div></div>
+    </aside>
+    <div class="sb-backdrop" id="sbBackdrop"></div>
+    <div class="main-col">
+      <header class="mobile-bar"><button type="button" id="menuBtn" aria-label="打开菜单">☰</button><span class="brand">文献综述笔记</span></header>
+      <div id="banner"></div>
+      <main id="app"></main>
+    </div>
+  </div>
 
   <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
     <div class="modal-box">
@@ -33,12 +36,12 @@
   </div>
   <div id="toast" class="toast hidden"></div>
 
-  <script src="vendor/xlsx.full.min.js?v=202611142239"></script>
-  <script src="vendor/pdf.min.js?v=202611142239"></script>
-  <script src="js/pdfmeta.js?v=202611142239"></script>
-  <script src="js/hints.js?v=202611142239"></script>
-  <script src="js/guide.js?v=202611142239"></script>
-  <script src="js/store.js?v=202611142239"></script>
-  <script src="js/app.js?v=202611142239"></script>
+  <script src="vendor/xlsx.full.min.js?v=202611142248"></script>
+  <script src="vendor/pdf.min.js?v=202611142248"></script>
+  <script src="js/pdfmeta.js?v=202611142248"></script>
+  <script src="js/hints.js?v=202611142248"></script>
+  <script src="js/guide.js?v=202611142248"></script>
+  <script src="js/store.js?v=202611142248"></script>
+  <script src="js/app.js?v=202611142248"></script>
 </body>
 </html>

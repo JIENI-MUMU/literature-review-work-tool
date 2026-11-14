@@ -259,3 +259,51 @@ textarea { min-height: 0; resize: none; overflow: hidden; }
 .tag.other { color: var(--muted); }
 .col-act { width: 90px; } .td-act { text-align: right; white-space: nowrap; }
 @media (max-width: 720px) { .proj-sel { max-width: 140px; } .list td.td-act { display: inline-block; float: right; } }
+
+/* ===== 左边栏布局（2026-11-14 用户选方案一） ===== */
+.topbar { display: none; }
+.shell { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+.sidebar { position: sticky; top: 0; height: 100vh; overflow-y: auto; border-right: 1px solid var(--line); padding: 16px 12px; display: flex; flex-direction: column; gap: 2px; background: #fff; }
+.sidebar .brand { font-size: 15px; font-weight: 700; padding: 2px 8px 14px; }
+.sb-label { font-size: 12px; color: var(--muted); padding: 4px 8px; }
+.sb-proj { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 6px; cursor: pointer; color: var(--ink); border-left: 2px solid transparent; }
+.sb-proj:hover { background: #f6f6f6; }
+.sb-proj.on { font-weight: 700; border-left-color: var(--ink); border-radius: 0 6px 6px 0; background: #f6f6f6; }
+.sb-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-count { font-size: 12px; color: var(--muted); font-weight: 400; }
+.sb-more { border: none; background: transparent; padding: 0 4px; color: var(--muted); visibility: hidden; font-size: 14px; line-height: 1; }
+.sb-proj:hover .sb-more { visibility: visible; }
+.sb-new { border: none; background: transparent; text-align: left; color: var(--muted); padding: 6px 8px; font-size: 13px; }
+.sb-new:hover { color: var(--ink); background: #f6f6f6; }
+.sb-sep { border-top: 1px solid var(--line); margin: 10px 0; }
+.sb-link { display: flex; justify-content: space-between; padding: 6px 8px; border-radius: 6px; text-decoration: none; color: var(--ink); border-left: 2px solid transparent; }
+.sb-link:hover { background: #f6f6f6; }
+.sb-link.on { font-weight: 700; border-left-color: var(--ink); border-radius: 0 6px 6px 0; background: #f6f6f6; }
+.sb-foot { margin-top: auto; padding: 12px 8px 0; }
+.sb-foot .sync-badge { white-space: normal; font-size: 12px; }
+.main-col { min-width: 0; }
+.main-col main { max-width: 1000px; margin: 0; padding: 20px 28px; }
+.main-col .banner { max-width: 1000px; margin: 16px 28px 0; }
+.mobile-bar { display: none; }
+.sb-backdrop { display: none; }
+/* 项目页顶部：项目名 + 三个标签 */
+.proj-head { margin-bottom: 14px; border-bottom: 1px solid var(--line); }
+.proj-head h1 { margin: 0 0 8px; }
+.proj-tabs { display: flex; gap: 4px; }
+.proj-tabs a { padding: 6px 12px; text-decoration: none; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.proj-tabs a:hover { color: var(--ink); }
+.proj-tabs a.on { color: var(--ink); font-weight: 700; border-bottom-color: var(--ink); }
+.card-layout .sec-nav { top: 16px; }
+/* 手机：边栏收起，☰ 打开 */
+@media (max-width: 860px) {
+  .shell { grid-template-columns: 1fr; }
+  .sidebar { position: fixed; left: 0; top: 0; z-index: 80; width: 250px; transform: translateX(-100%); transition: transform .2s; box-shadow: 0 0 24px rgba(0,0,0,.12); }
+  body.sb-open .sidebar { transform: none; }
+  body.sb-open .sb-backdrop { display: block; position: fixed; inset: 0; z-index: 79; background: rgba(0,0,0,.25); }
+  .mobile-bar { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: #fff; z-index: 20; }
+  .mobile-bar button { font-size: 18px; padding: 2px 10px; }
+  .mobile-bar .brand { font-weight: 700; }
+  .main-col main { padding: 14px 16px; }
+  .main-col .banner { margin: 12px 16px 0; }
+  .sb-more { visibility: visible; }
+}

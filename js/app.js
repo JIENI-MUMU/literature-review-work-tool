@@ -105,6 +105,7 @@
 
   S.onChange(() => {
     updateBadge(); updateBanner();
+    if (document.getElementById('sbProjects')) drawSidebar();
     if (S.replaced) { S.replaced = false; route(); }
   });
 
@@ -114,8 +115,8 @@
   function route() {
     const h = location.hash || '#/list';
     const [, page, id] = h.split('/');
-    document.querySelectorAll('.nav a').forEach((a) => a.classList.toggle('active', a.dataset.route === (page === 'paper' ? 'list' : page)));
-    drawProjSel();
+    drawSidebar(page);
+    document.body.classList.remove('sb-open');
     if (page === 'paper' && id) renderCard(id);
     else if (page === 'questions') renderQuestions();
     else if (page === 'review') renderReview();
@@ -154,7 +155,7 @@
     const opts = [['all', '全部问题']].concat(qs.map((q) => [q.id, q.code + '：' + q.text.slice(0, 24)]), [['unsure', '暂不确定'], ['none', '未归类']]);
     const total = projPapers().length;
     app.innerHTML = `
-      <h1>文献列表 <span class="proj-name">· ${esc(P().name)}</span></h1>
+      ${projHeader('list')}
       <p class="sub">共 ${total} 篇，全文已读 ${readCount()} 篇。点一行打开笔记卡，<b>右键</b>可以移除。<b style="color:var(--red)">左边有红线的行</b>=还没读完全文，不能引用。</p>
       <div class="list-tools">
         <div class="lt-cell">
@@ -257,7 +258,7 @@
     const m = document.createElement('div');
     m.id = 'rowMenu'; m.className = 'row-menu';
     m.innerHTML = mode === 'library'
-      ? (inProj(id) ? '<button type="button" data-m="open">打开</button>' : '<button type="button" data-m="add">加入当前项目</button>') + '<button type="button" data-m="purge" class="danger">从文献库彻底删除</button>'
+      ? '<button type="button" data-m="purge" class="danger">从文献库彻底删除</button>'
       : '<button type="button" data-m="open">打开</button><button type="button" data-m="del" class="danger">从这个项目移除</button>';
     document.body.appendChild(m);
     const w = m.offsetWidth, h = m.offsetHeight;
@@ -316,9 +317,9 @@
     const p = view(raw);
     const qs = P().questions;
 
-    app.innerHTML = `
+    app.innerHTML = `${projHeader('list')}
       <div class="card-head">
-        <a href="#/list">← 回到列表</a>
+        <a href="#/list">← 回到文献列表</a>
         <span class="meta-line">最后修改：${esc(fmtDate(p.updatedAt))}</span>
         <span><button class="small" id="btnAI" title="找不到某格的内容时，生成一段提示词，拿去问 Claude">让 AI 指路</button>
         <button class="danger small" id="btnDel">从这个项目移除</button></span>
@@ -793,7 +794,7 @@ ${head || '（见附件）'}
     const d = P();
     let draft = d.questions.map((q) => Object.assign({}, q));
     app.innerHTML = `
-      <h1>我关心的问题 <span class="proj-name">· ${esc(d.name)}</span></h1>
+      ${projHeader('questions')}
       <p class="sub">这是“工作问题”，用来帮你筛选读什么，不是最终的研究问题。读着读着一定会改，改了说明你读进去了。每次保存，旧版本自动存进下面的历史。 ${helpBtn('question')}</p>
       <section class="panel">
         <div id="qList"></div>
@@ -860,7 +861,7 @@ ${head || '（见附件）'}
     const since = rc - (d.lastReviewReadCount || 0);
     const readPapers = projPapers().filter((p) => p.fullRead).sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
     app.innerHTML = `
-      <h1>横向复盘 <span class="proj-name">· ${esc(d.name)}</span></h1>
+      ${projHeader('review')}
       <p class="sub">每读完 5 篇做一次。把下面几篇的笔记横着看，写三句话。几轮下来，“没人研究过”那一栏会长成你综述的论断。</p>
       <p>目前全文已读 <b>${rc}</b> 篇，上次复盘后新读了 <b>${since}</b> 篇。</p>
 
@@ -913,31 +914,80 @@ ${head || '（见附件）'}
   }
 
   // =====================================================
-  // 项目切换（顶栏）
+  // 左边栏：项目列表 + 文献库 / 使用说明 / 设置
   // =====================================================
-  function drawProjSel() {
-    const sel = document.getElementById('projSel'); if (!sel) return;
+  const PROJECT_PAGES = ['list', 'questions', 'review', 'paper'];
+  function projHeader(active) {
+    const tab = (k, name) => `<a href="#/${k}" class="${k === active ? 'on' : ''}">${name}</a>`;
+    return `<div class="proj-head"><h1>${esc(P().name)}</h1>
+      <nav class="proj-tabs">${tab('list', '文献列表')}${tab('questions', '我关心的问题')}${tab('review', '横向复盘')}</nav></div>`;
+  }
+  function drawSidebar(page) {
+    page = page || (location.hash || '#/list').split('/')[1] || 'list';
+    const onProject = PROJECT_PAGES.includes(page);
     const cur = P();
-    sel.innerHTML = D().projects.map((pj) => `<option value="${pj.id}" ${pj.id === cur.id ? 'selected' : ''}>${esc(pj.name)}</option>`).join('') +
-      '<option disabled>──────</option><option value="__new">＋ 新建项目…</option><option value="__manage">管理项目…</option>';
+    const box = document.getElementById('sbProjects');
+    box.innerHTML = D().projects.map((pj) => {
+      const n = Object.keys(pj.items).length;
+      const on = onProject && pj.id === cur.id;
+      return `<div class="sb-proj ${on ? 'on' : ''} ${pj.id === cur.id ? 'cur' : ''}" data-pj="${pj.id}" title="右键：改名 / 删除">
+        <span class="sb-name">${esc(pj.name)}</span><span class="sb-count">${n}</span>
+        <button type="button" class="sb-more" data-pjmore="${pj.id}" title="改名 / 删除">⋯</button></div>`;
+    }).join('');
+    box.querySelectorAll('.sb-proj').forEach((el) => {
+      el.onclick = (e) => {
+        if (e.target.closest('[data-pjmore]')) return;
+        S.setCur(el.dataset.pj);
+        const pg = (location.hash || '').split('/')[1];
+        if (['list', 'questions', 'review'].includes(pg)) route(); else location.hash = '#/list';
+      };
+      el.addEventListener('contextmenu', (e) => { e.preventDefault(); showProjMenu(e.clientX, e.clientY, el.dataset.pj); });
+    });
+    box.querySelectorAll('[data-pjmore]').forEach((b) => {
+      b.onclick = (e) => { e.stopPropagation(); const r = b.getBoundingClientRect(); showProjMenu(r.left, r.bottom + 4, b.dataset.pjmore); };
+    });
+    document.getElementById('libCount').textContent = D().papers.length || '';
+    document.querySelectorAll('.sb-link').forEach((a) => a.classList.toggle('on', a.dataset.route === page));
+  }
+  function showProjMenu(x, y, pid) {
+    hideRowMenu();
+    const pj = D().projects.find((p) => p.id === pid); if (!pj) return;
+    const m = document.createElement('div');
+    m.id = 'rowMenu'; m.className = 'row-menu';
+    m.innerHTML = '<button type="button" data-m="rename">改名</button>' +
+      (D().projects.length > 1 ? '<button type="button" data-m="del" class="danger">删除这个项目</button>' : '<button type="button" disabled title="至少要留一个项目">删除这个项目</button>');
+    document.body.appendChild(m);
+    m.style.left = Math.min(x, window.innerWidth - m.offsetWidth - 8) + 'px';
+    m.style.top = Math.min(y, window.innerHeight - m.offsetHeight - 8) + 'px';
+    const rn = m.querySelector('[data-m="rename"]');
+    rn.onclick = () => {
+      hideRowMenu();
+      const v = (prompt('项目的新名字：', pj.name) || '').trim();
+      if (!v || v === pj.name) return;
+      pj.name = v; S.save(); route(); toast('已改名');
+    };
+    const del = m.querySelector('[data-m="del"]');
+    if (del) del.onclick = () => {
+      hideRowMenu();
+      if (!confirm(`删除项目“${pj.name}”？\n\n这个项目的问题、复盘、对文章的评价和总结都会删掉，不能恢复。\n文章本身还留在文献库里，其他项目不受影响。`)) return;
+      D().projects = D().projects.filter((x) => x.id !== pj.id);
+      if (!D().projects.some((x) => x.id === P().id)) S.setCur(D().projects[0].id);
+      S.save(); toast('项目已删除');
+      if (PROJECT_PAGES.includes((location.hash || '').split('/')[1])) location.hash = '#/list';
+      route();
+    };
   }
   function createProject() {
     const name = (prompt('新项目叫什么名字？') || '').trim();
-    if (!name) { drawProjSel(); return null; }
+    if (!name) return null;
     const pj = S.newProject(name);
     D().projects.push(pj); S.save(); S.setCur(pj.id);
-    toast(`已新建并切换到项目“${name}”`);
+    toast(`已新建项目“${name}”，先写下几个你关心的问题`);
     return pj;
   }
-  document.getElementById('projSel').addEventListener('change', (e) => {
-    const v = e.target.value;
-    if (v === '__new') { if (createProject()) location.hash = '#/questions'; route(); return; }
-    if (v === '__manage') { location.hash = '#/settings'; drawProjSel(); setTimeout(() => { const t = document.getElementById('projPanel'); if (t) t.scrollIntoView(); }, 50); return; }
-    S.setCur(v);
-    const h = location.hash || '';
-    if (h.startsWith('#/paper/')) location.hash = '#/list'; else route();
-    toast(`已切换到项目“${P().name}”`);
-  });
+  document.getElementById('sbNew').onclick = () => { if (createProject()) { if (location.hash === '#/questions') route(); else location.hash = '#/questions'; } };
+  document.getElementById('menuBtn').onclick = () => document.body.classList.toggle('sb-open');
+  document.getElementById('sbBackdrop').onclick = () => document.body.classList.remove('sb-open');
 
   // =====================================================
   // 文献库：所有项目共用的文章
@@ -947,9 +997,9 @@ ${head || '（见附件）'}
     const cur = P();
     app.innerHTML = `
       <h1>文献库</h1>
-      <p class="sub">所有项目共用的文章，共 ${D().papers.length} 篇。文章的事实（方法、结果等）只记一次，每个项目各写各的评价。<br>点“加入”把文章放进当前项目“${esc(cur.name)}”。<b>右键</b>可以从文献库彻底删除。</p>
+      <p class="sub">所有项目共用的文章，共 ${D().papers.length} 篇。文章的事实（方法、结果等）只记一次，每个项目各写各的评价。<br>点“加入项目”把文章放进某个项目。<b>右键</b>可以从文献库彻底删除。</p>
       <div class="list-tools" style="grid-template-columns:1fr minmax(260px,340px)">
-        <div class="lt-cell"><a class="btn" href="#/list">← 回到“${esc(cur.name)}”的文献列表</a></div>
+        <div class="lt-cell"></div>
         <div class="lt-cell"><input type="search" id="libQ" placeholder="搜索标题、作者…" value="${esc(libState.q)}"></div>
       </div>
       <div class="list" id="libBox"></div>`;
@@ -970,18 +1020,37 @@ ${head || '（见附件）'}
             <td>${esc(p.year)}</td>
             <td class="td-au" title="${esc(p.authors)}">${esc(shortAuthors(p.authors))}</td>
             <td>${pjs.length ? pjs.map((pj) => `<span class="tag ${pj.id === cur.id ? '' : 'other'}">${esc(pj.name)}</span>`).join('') : '<span class="empty-sum">不在任何项目里</span>'}</td>
-            <td class="td-act">${here ? '<span class="meta-line">已在本项目</span>' : `<button type="button" class="small" data-join="${p.id}">加入</button>`}</td>
+            <td class="td-act"><button type="button" class="small" data-join="${p.id}">加入项目 ▾</button></td>
           </tr>`;
         }).join('')}</tbody></table>`;
       box.querySelectorAll('tbody tr').forEach((tr) => {
-        tr.onclick = () => { if (inProj(tr.dataset.id)) location.hash = '#/paper/' + tr.dataset.id; };
+        tr.onclick = () => {
+          const id = tr.dataset.id;
+          const pj = inProj(id) ? P() : D().projects.find((x) => x.items[id]);
+          if (!pj) { toast('这篇还不在任何项目里，先点“加入项目”'); return; }
+          S.setCur(pj.id); location.hash = '#/paper/' + id;
+        };
         tr.addEventListener('contextmenu', (e) => { e.preventDefault(); showRowMenu(e.clientX, e.clientY, tr.dataset.id, 'library'); });
       });
       box.querySelectorAll('[data-join]').forEach((b) => {
         b.onclick = (e) => {
           e.stopPropagation();
           const p = D().papers.find((x) => x.id === b.dataset.join); if (!p) return;
-          addToProject(p); S.save(); toast(`已加入“${cur.name}”`); draw();
+          hideRowMenu();
+          const m = document.createElement('div'); m.id = 'rowMenu'; m.className = 'row-menu';
+          m.innerHTML = D().projects.map((pj) => pj.items[p.id]
+            ? `<button type="button" disabled>✓ 已在「${esc(pj.name)}」</button>`
+            : `<button type="button" data-to="${pj.id}">加入「${esc(pj.name)}」</button>`).join('');
+          document.body.appendChild(m);
+          const r = b.getBoundingClientRect();
+          m.style.left = Math.min(r.left, window.innerWidth - m.offsetWidth - 8) + 'px';
+          m.style.top = Math.min(r.bottom + 4, window.innerHeight - m.offsetHeight - 8) + 'px';
+          m.querySelectorAll('[data-to]').forEach((x) => {
+            x.onclick = () => {
+              const pj = D().projects.find((q) => q.id === x.dataset.to);
+              addToProject(p, pj); S.save(); hideRowMenu(); toast(`已加入“${pj.name}”`); draw(); drawSidebar();
+            };
+          });
         };
       });
     };
@@ -1006,14 +1075,7 @@ ${head || '（见附件）'}
     const s = S.getSync();
     app.innerHTML = `
       <h1>设置</h1>
-      <p class="sub">项目、同步、备份、导出。</p>
-
-      <section class="panel" id="projPanel">
-        <h2>项目</h2>
-        <p class="meta-line">每个项目有自己的问题、复盘和对文章的评价；文章的事实笔记放在文献库里，所有项目共用。</p>
-        <div id="projList"></div>
-        <button type="button" class="small" id="projNew">＋ 新建项目</button>
-      </section>
+      <p class="sub">同步、备份、导出。项目在左边栏管理：点“＋ 新建项目”新建，项目名上右键改名或删除。</p>
 
       <section class="panel">
         <h2>自动同步</h2>
@@ -1035,7 +1097,7 @@ ${head || '（见附件）'}
 
       <section class="panel">
         <h2>导出</h2>
-        <p class="meta-line">导出的 Excel / CSV 方便在别处查看；完整备份（JSON）可以导回本软件。</p>
+        <p class="meta-line">Excel / CSV 导出的是当前项目“${esc(P().name)}”；完整备份（JSON）包含全部项目和文献库，可以导回本软件。</p>
         <button id="expXlsx">导出 Excel</button>
         <button id="expCsv">导出 CSV</button>
         <button id="expJson">下载完整备份（JSON）</button>
@@ -1072,38 +1134,6 @@ ${head || '（见附件）'}
         } catch (e) { m.textContent = '连接失败：' + e.message; }
       };
     }
-
-    const drawProjects = () => {
-      const box = app.querySelector('#projList');
-      box.innerHTML = D().projects.map((pj) => {
-        const n = Object.keys(pj.items).length;
-        return `<div class="q-item">
-          <input type="text" data-pj="${pj.id}" value="${esc(pj.name)}">
-          <span class="meta-line" style="white-space:nowrap">${n} 篇${pj.id === P().id ? ' · 当前' : ''}</span>
-          ${pj.id === P().id ? '' : `<button type="button" class="small" data-pjgo="${pj.id}">切换</button>`}
-          <button type="button" class="small danger" data-pjdel="${pj.id}" ${D().projects.length < 2 ? 'disabled title="至少要留一个项目"' : ''}>删除</button>
-        </div>`;
-      }).join('');
-      box.querySelectorAll('[data-pj]').forEach((el) => {
-        el.onchange = () => {
-          const pj = D().projects.find((x) => x.id === el.dataset.pj); const v = el.value.trim();
-          if (!v) { el.value = pj.name; return; }
-          pj.name = v; S.save(); drawProjSel(); toast('已改名');
-        };
-      });
-      box.querySelectorAll('[data-pjgo]').forEach((b) => { b.onclick = () => { S.setCur(b.dataset.pjgo); drawProjSel(); drawProjects(); toast(`已切换到“${P().name}”`); }; });
-      box.querySelectorAll('[data-pjdel]').forEach((b) => {
-        b.onclick = () => {
-          const pj = D().projects.find((x) => x.id === b.dataset.pjdel);
-          if (!confirm(`删除项目“${pj.name}”？\n\n这个项目的问题、复盘、对文章的评价和总结都会删掉，不能恢复。\n文章本身还留在文献库里，其他项目不受影响。`)) return;
-          D().projects = D().projects.filter((x) => x.id !== pj.id);
-          if (P().id === pj.id || !D().projects.includes(P())) S.setCur(D().projects[0].id);
-          S.save(); drawProjSel(); drawProjects(); toast('项目已删除');
-        };
-      });
-    };
-    drawProjects();
-    app.querySelector('#projNew').onclick = () => { if (createProject()) { drawProjSel(); drawProjects(); } };
 
     app.querySelector('#expXlsx').onclick = exportXlsx;
     app.querySelector('#expCsv').onclick = exportCsv;
