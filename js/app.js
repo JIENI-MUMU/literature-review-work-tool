@@ -136,24 +136,27 @@
     app.innerHTML = `
       <h1>文献列表</h1>
       <p class="sub">共 ${total} 篇，全文已读 ${readCount()} 篇。点一行打开笔记卡，<b>右键</b>可以删除。<b style="color:var(--red)">左边有红线的行</b>=还没读完全文，不能引用。</p>
-      <div class="toolbar">
-        <label class="btn primary-label" style="margin:0">＋ 从 PDF 新增<input type="file" id="pdfFiles" accept=".pdf,application/pdf" multiple hidden></label>
-        <button id="btnNew">＋ 手动新增</button>
-        <label class="btn" style="margin:0">导入 Zotero CSV<input type="file" id="zoteroFile" accept=".csv,text/csv" hidden></label>
-        <span class="spacer"></span>
-        <input type="search" id="q" placeholder="搜索标题、作者、总结…" value="${esc(st.q)}">
-        <select id="filter">${opts.map(([v, t]) => `<option value="${esc(v)}" ${st.filter === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
-        <select id="sort">
-          <option value="updated" ${st.sort === 'updated' ? 'selected' : ''}>最近修改</option>
-          <option value="year" ${st.sort === 'year' ? 'selected' : ''}>年份</option>
-          <option value="title" ${st.sort === 'title' ? 'selected' : ''}>标题</option>
-        </select>
+      <div class="list-tools">
+        <div class="lt-cell">
+          <label class="btn primary-label" style="margin:0">＋ 从 PDF 新增<input type="file" id="pdfFiles" accept=".pdf,application/pdf" multiple hidden></label>
+          <button id="btnNew">＋ 手动新增</button>
+          <label class="btn" style="margin:0">导入 Zotero CSV<input type="file" id="zoteroFile" accept=".csv,text/csv" hidden></label>
+        </div>
+        <div class="lt-cell"><input type="search" id="q" placeholder="搜索标题、作者、总结…" value="${esc(st.q)}"></div>
+        <div class="lt-cell">
+          <select id="filter">${opts.map(([v, t]) => `<option value="${esc(v)}" ${st.filter === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
+          <select id="sort">
+            <option value="updated" ${st.sort === 'updated' ? 'selected' : ''}>最近修改</option>
+            <option value="year" ${st.sort === 'year' ? 'selected' : ''}>年份</option>
+            <option value="title" ${st.sort === 'title' ? 'selected' : ''}>标题</option>
+          </select>
+        </div>
+        <div class="lt-cell"><div class="dropzone compact" id="dropZone" title="PDF 只在你电脑上读取，不会上传，也不会保存。">把 PDF 拖到这里，自动填好信息（可多篇）</div></div>
       </div>
       <div class="toolbar">
         <label class="chk"><input type="checkbox" id="fUnread" ${st.unread ? 'checked' : ''}> 只看未读全文</label>
         <label class="chk"><input type="checkbox" id="fUnsure" ${st.unsure ? 'checked' : ''}> 只看“局限不确定”的（待批改）</label>
       </div>
-      <div class="dropzone" id="dropZone">把 PDF 拖到这里（可以一次拖多篇），自动找 DOI、填好标题作者年份期刊。<br><span class="meta-line">PDF 只在你电脑上读取，不会上传，也不会保存。</span></div>
       <div class="list" id="listBox"></div>`;
     drawRows();
     app.querySelector('#pdfFiles').onchange = (e) => { addFromPdfs(e.target.files); e.target.value = ''; };

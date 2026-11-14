@@ -238,3 +238,10 @@ textarea { min-height: 0; resize: none; overflow: hidden; }
 .row-menu button { border: none; text-align: left; padding: 6px 10px; border-radius: 5px; font-size: 13px; background: #fff; }
 .row-menu button:hover { background: #f4f4f4; }
 .row-menu button.danger { color: var(--red); }
+/* 文献列表顶部：左边按钮/筛选，右边搜索/拖放框（上下对齐） */
+.list-tools { display: grid; grid-template-columns: 1fr minmax(260px, 340px); gap: 8px 16px; margin-bottom: 8px; align-items: center; }
+.lt-cell { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-width: 0; }
+.lt-cell select { width: auto; max-width: 260px; }
+.lt-cell input[type=search] { width: 100%; max-width: none; }
+.dropzone.compact { width: 100%; margin: 0; padding: 5px 10px; font-size: 13px; line-height: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 720px) { .list-tools { grid-template-columns: 1fr; } .lt-cell select { max-width: none; flex: 1; } }
