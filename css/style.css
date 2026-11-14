@@ -312,3 +312,26 @@ textarea { min-height: 0; resize: none; overflow: hidden; }
 .th-sort { cursor: pointer; user-select: none; }
 .th-sort:hover { color: var(--ink); }
 .th-sort.on { color: var(--ink); }
+/* 边栏可收起（电脑上） */
+.sb-top { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 14px 8px; }
+.sb-top .brand { padding: 0; }
+.icon-btn { border: none; background: transparent; color: var(--muted); padding: 4px; border-radius: 6px; line-height: 0; cursor: pointer; }
+.icon-btn:hover { color: var(--ink); background: #f2f2f2; }
+.sb-show { display: none; position: fixed; top: 14px; left: 14px; z-index: 30; background: #fff; border: 1px solid var(--line); }
+@media (min-width: 861px) {
+  body.sb-collapsed .shell { grid-template-columns: 1fr; }
+  body.sb-collapsed .sidebar { display: none; }
+  body.sb-collapsed .sb-show { display: block; }
+  body.sb-collapsed .main-col main, body.sb-collapsed .main-col .banner { margin-left: 56px; }
+}
+@media (max-width: 860px) { #sbToggle { display: none; } }
+/* 使用说明、设置放到边栏底部，同步状态上面（误删后恢复） */
+.sb-foot { display: flex; flex-direction: column; gap: 2px; padding: 12px 0 0; border-top: 1px solid var(--line); }
+.sb-foot .sync-badge { padding: 8px 8px 0; }
+/* 笔记卡每部分右上角的保存（误删后恢复） */
+.sec-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.sec-save { display: flex; align-items: center; gap: 8px; }
+.save-st { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.save-st.ok { color: #2e7d4f; }
+.save-st.bad { color: var(--red); }
+@media (max-width: 720px) { .sec-top { flex-wrap: wrap; } .save-st { white-space: normal; } }

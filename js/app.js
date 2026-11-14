@@ -1006,6 +1006,14 @@ ${head || '（见附件）'}
   }
   document.getElementById('sbNew').onclick = () => { if (createProject()) { if (location.hash === '#/questions') route(); else location.hash = '#/questions'; } };
   document.getElementById('menuBtn').onclick = () => document.body.classList.toggle('sb-open');
+  // 电脑上可以收起边栏，记住上次的状态
+  const setCollapsed = (on) => {
+    document.body.classList.toggle('sb-collapsed', on);
+    try { localStorage.setItem('litreview.sbCollapsed', on ? '1' : ''); } catch (e) {}
+  };
+  try { if (localStorage.getItem('litreview.sbCollapsed')) document.body.classList.add('sb-collapsed'); } catch (e) {}
+  document.getElementById('sbToggle').onclick = () => setCollapsed(true);
+  document.getElementById('sbShow').onclick = () => setCollapsed(false);
   document.getElementById('sbBackdrop').onclick = () => document.body.classList.remove('sb-open');
 
   // =====================================================
