@@ -378,11 +378,10 @@
     app.innerHTML = `${projHeader('list')}
       <div class="card-head">
         <a href="#/list">← 回到文献列表</a>
-        <span class="meta-line">最后修改：${esc(fmtDate(p.updatedAt))}</span>
+        <span class="meta-line"><span id="readWarn"></span>最后修改：${esc(fmtDate(p.updatedAt))}</span>
         <span><button class="small" id="btnAI" title="找不到某格的内容时，生成一段提示词，拿去问 Claude">让 AI 指路</button>
         <button class="danger small" id="btnDel">从这个项目移除</button></span>
       </div>
-      <div id="readWarn"></div>
       <div class="card-layout">
         <nav class="sec-nav" id="secNav"></nav>
         <div class="sec-body">
@@ -402,7 +401,7 @@
             <select data-f="sourceType">${SOURCE_TYPES.map(([v, t]) => `<option value="${v}" ${p.sourceType === v ? 'selected' : ''}>${t}</option>`).join('')}</select>
           </div>
           <div class="field">${label('fullRead')}
-            <label class="chk" style="color:var(--ink)"><input type="checkbox" id="fullRead" ${p.fullRead ? 'checked' : ''}> 我已经读完全文</label>
+            <label class="chk" style="color:var(--ink)"><input type="checkbox" id="fullRead" ${p.fullRead ? 'checked' : ''}> 我已经读完全文</label> <span class="unread-note" id="readNote"></span>
           </div>
         </div>
         <div class="field">${label('questions')}
@@ -509,9 +508,10 @@
       });
     });
     const fr = app.querySelector('#fullRead');
+    // 未读提醒：只在顶部放一个小红标签，勾选框旁边一行小字，不占地方
     const drawWarn = () => {
-      app.querySelector('#readWarn').innerHTML = p.fullRead ? '' :
-        '<div class="warn-box">还没有读完全文。这篇在勾选“全文已读”之前，<b>不能在论文里引用</b>。</div>';
+      app.querySelector('#readWarn').innerHTML = p.fullRead ? '' : '<span class="tag red" title="勾选“全文已读”之前，不能在论文里引用">未读完 · 不能引用</span> ';
+      app.querySelector('#readNote').textContent = p.fullRead ? '' : '没勾之前，这篇不能在论文里引用';
     };
     drawWarn();
     fr.onchange = () => { p.fullRead = fr.checked; drawWarn(); touch(); updateBanner(); };

@@ -335,3 +335,4 @@ textarea { min-height: 0; resize: none; overflow: hidden; }
 .save-st.ok { color: #2e7d4f; }
 .save-st.bad { color: var(--red); }
 @media (max-width: 720px) { .sec-top { flex-wrap: wrap; } .save-st { white-space: normal; } }
+.unread-note { font-size: 12px; color: var(--red); }
