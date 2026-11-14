@@ -164,3 +164,8 @@ button.primary { background: #fff; color: var(--ink); border: 1.5px solid var(--
 .guide .bad { border-color: var(--red); }
 code { background: #fff; border: 1px solid var(--line); }
 .topbar { border-bottom: 1px solid var(--line); }
+.dropzone { border: 1.5px dashed #c9c6bc; border-radius: var(--radius); padding: 18px; text-align: center; color: var(--muted); margin-bottom: 14px; cursor: pointer; background: #fff; }
+.dropzone:hover, .dropzone.over { border-color: var(--ink); color: var(--ink); }
+.primary-label { border: 1.5px solid var(--ink); font-weight: 600; }
+.cand { border-top: 1px solid var(--line); padding: 10px 0; }
+.cand button { margin-top: 6px; }

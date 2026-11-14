@@ -11,7 +11,7 @@
 - **我关心的问题**：工作问题，可以随时改，每次修改自动留历史。
 - **横向复盘**：每读完 5 篇提醒一次，写下一致的、矛盾的、没人研究的。
 - **使用说明**：工作流、四类观点、六个陷阱、笔记怎么变成论文语言。
-- **DOI 拉取**：填 DOI 自动填标题、作者、年份、期刊（用 Crossref，免费）。
+- **拖入 PDF 自动识别**：在 PDF 里找 DOI，自动填标题、作者、年份、期刊（用 Crossref，免费，不用 AI）。PDF 只在本机读取，不上传。也可以手填 DOI。
 - **导入 Zotero CSV**、**导出 Excel / CSV / 完整备份**。
 - **自动同步**：数据存在私有仓库 `literature-review-work-data`，打开自动拉取，修改后自动上传。
 
@@ -42,4 +42,5 @@
 
 ## 第三方组件
 
+- PDF 读取使用 [PDF.js](https://mozilla.github.io/pdf.js/)（Apache 2.0），文件在 `vendor/`。
 - Excel 导出使用 [SheetJS Community Edition](https://sheetjs.com/)（Apache 2.0），文件在 `vendor/`。

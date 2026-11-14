@@ -19,7 +19,7 @@
 
   const modal = document.getElementById('modal');
   function openModal(html) { modal.querySelector('.modal-body').innerHTML = html; modal.classList.remove('hidden'); }
-  function closeModal() { modal.classList.add('hidden'); }
+  function closeModal() { modal.classList.add('hidden'); if (typeof pickResolve === 'function') { const r = pickResolve; pickResolve = null; r(null); } }
   modal.addEventListener('click', (e) => { if (e.target === modal || e.target.classList.contains('modal-close')) closeModal(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
 
@@ -137,7 +137,8 @@
       <h1>文献列表</h1>
       <p class="sub">共 ${total} 篇，全文已读 ${readCount()} 篇。点一行打开笔记卡。<b style="color:var(--red)">左边有红线的行</b>=还没读完全文，不能引用。</p>
       <div class="toolbar">
-        <button class="primary" id="btnNew">＋ 新增文献</button>
+        <label class="btn primary-label" style="margin:0">＋ 从 PDF 新增<input type="file" id="pdfFiles" accept=".pdf,application/pdf" multiple hidden></label>
+        <button id="btnNew">＋ 手动新增</button>
         <label class="btn" style="margin:0">导入 Zotero CSV<input type="file" id="zoteroFile" accept=".csv,text/csv" hidden></label>
         <span class="spacer"></span>
         <input type="search" id="q" placeholder="搜索标题、作者、总结…" value="${esc(st.q)}">
@@ -152,8 +153,12 @@
         <label class="chk"><input type="checkbox" id="fUnread" ${st.unread ? 'checked' : ''}> 只看未读全文</label>
         <label class="chk"><input type="checkbox" id="fUnsure" ${st.unsure ? 'checked' : ''}> 只看“局限不确定”的（待批改）</label>
       </div>
+      <div class="dropzone" id="dropZone">把 PDF 拖到这里（可以一次拖多篇），自动找 DOI、填好标题作者年份期刊。<br><span class="meta-line">PDF 只在你电脑上读取，不会上传，也不会保存。</span></div>
       <div class="list" id="listBox"></div>`;
     drawRows();
+    app.querySelector('#pdfFiles').onchange = (e) => { addFromPdfs(e.target.files); e.target.value = ''; };
+    const dz = app.querySelector('#dropZone');
+    dz.onclick = () => app.querySelector('#pdfFiles').click();
 
     app.querySelector('#btnNew').onclick = newPaper;
     app.querySelector('#zoteroFile').onchange = (e) => importZotero(e.target.files[0]);
@@ -168,7 +173,7 @@
     const box = document.getElementById('listBox'); if (!box) return;
     const ps = filteredPapers();
     if (!D().papers.length) {
-      box.innerHTML = `<div class="empty">还没有文献。<br>先去“我关心的问题”写下几个工作问题，再点“新增文献”。</div>`;
+      box.innerHTML = `<div class="empty">还没有文献。<br>先去“我关心的问题”写下几个工作问题，再把 PDF 拖进上面的虚线框。</div>`;
       return;
     }
     if (!ps.length) { box.innerHTML = '<div class="empty">没有符合筛选条件的文献。</div>'; return; }
@@ -193,7 +198,7 @@
       sourceType: '', questionIds: [], fullRead: false,
       aQuestion: '', aMethod: '', aFindings: '', aAuthorLimits: '',
       bEvidence: '', bEvidenceConfidence: '', bApply: '', bCompare: '', bProves: '', bGap: '',
-      quotes: [], summary: '',
+      quotes: [], summary: '', pdfName: '',
     };
   }
 
@@ -231,7 +236,8 @@
       <section class="panel">
         <h2>基本信息</h2>
         <div class="field">${label('doi')}
-          <div class="inline"><input type="text" data-f="doi" placeholder="${esc(H.doi.placeholder)}" value="${esc(p.doi)}"><button id="btnDoi">拉取</button></div>
+          <div class="inline"><input type="text" data-f="doi" placeholder="${esc(H.doi.placeholder)}" value="${esc(p.doi)}"><button id="btnDoi">拉取</button><label class="btn" style="margin:0;white-space:nowrap">从 PDF 识别<input type="file" id="pdfOne" accept=".pdf,application/pdf" hidden></label></div>
+          ${p.pdfName ? `<div class="meta-line">对应的 PDF 文件：${esc(p.pdfName)}</div>` : ''}
           ${p.crossrefType ? `<div class="meta-line">${p.crossrefType.startsWith('Zotero：') ? 'Zotero 记录的类型：' + esc(p.crossrefType.slice(7)) : 'Crossref 记录的类型：' + esc(p.crossrefType)}（只供参考，来源类型要你自己判断）</div>` : ''}
         </div>
         ${inp(p, 'title')}
@@ -347,6 +353,7 @@
     app.querySelector('#addQuote').onclick = () => { p.quotes.push({ text: '', page: '' }); drawQuotes(); touch(); };
 
     app.querySelector('#btnDoi').onclick = () => fetchDoi(p);
+    app.querySelector('#pdfOne').onchange = (e) => { fillFromPdf(p, e.target.files[0]); e.target.value = ''; };
     app.querySelector('#btnDel').onclick = () => {
       if (!confirm('确定删除这篇文献和它的全部笔记？删除后不能恢复。')) return;
       D().papers = D().papers.filter((x) => x.id !== p.id); S.save();
@@ -361,6 +368,16 @@
     return String(s || '').trim().replace(/^https?:\/\/(dx\.)?doi\.org\//i, '').replace(/^doi:\s*/i, '');
   }
 
+  function applyMeta(p, m) {
+    p.doi = m.doi || p.doi;
+    p.title = m.title || p.title;
+    p.authors = m.authors || p.authors;
+    p.year = m.year || p.year;
+    p.journal = m.journal || p.journal;
+    p.crossrefType = m.crossrefType || '';
+    p.updatedAt = new Date().toISOString();
+  }
+
   async function fetchDoi(p) {
     const doi = normDoi(p.doi);
     if (!doi) { toast('先填 DOI'); return; }
@@ -368,24 +385,89 @@
     if (filled.length && !confirm('标题/作者/年份/期刊已经有内容，用拉取到的信息覆盖吗？')) return;
     toast('正在拉取…');
     try {
-      const res = await fetch('https://api.crossref.org/works/' + encodeURIComponent(doi));
-      if (res.status === 404) { toast('找不到这个 DOI，检查一下有没有抄错'); return; }
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const m = (await res.json()).message;
-      p.doi = doi;
-      p.title = (m.title || [])[0] || p.title;
-      p.authors = (m.author || []).map((a) => [a.family, a.given ? a.given.split(/[\s.-]+/).filter(Boolean).map((x) => x[0]).join('') : ''].filter(Boolean).join(' ') || a.name).join('; ') || p.authors;
-      const dp = (m.issued || m['published-print'] || m['published-online'] || {})['date-parts'];
-      p.year = dp && dp[0] && dp[0][0] ? String(dp[0][0]) : p.year;
-      p.journal = (m['container-title'] || [])[0] || m.publisher || p.journal;
-      p.crossrefType = m.type || '';
-      p.updatedAt = new Date().toISOString();
+      const m = await Crossref.lookup(doi);
+      if (!m) { toast('找不到这个 DOI，检查一下有没有抄错'); return; }
+      applyMeta(p, m);
       S.save();
       renderCard(p.id);
       toast('已拉取。来源类型请你自己判断。');
     } catch (e) {
       toast('拉取失败（' + e.message + '），请检查网络，或手动填写');
     }
+  }
+
+  // =====================================================
+  // 从 PDF 识别（PDF 只在本机读取，不上传、不保存）
+  // =====================================================
+  let pickResolve = null;
+  function pickCandidate(fileName, guess, cands) {
+    return new Promise((resolve) => {
+      pickResolve = resolve;
+      openModal(`<h3>没在 PDF 里找到 DOI</h3>
+        <p class="meta-line">文件：${esc(fileName)}<br>用标题“${esc(guess || '（没认出标题）')}”在 Crossref 搜到下面这些。是哪一篇？</p>
+        ${cands.length ? cands.map((c, i) => `<div class="cand">
+            <div><b>${esc(c.title)}</b></div>
+            <div class="meta-line">${esc(c.authors.split(';').slice(0, 3).join(';'))}${c.authors.split(';').length > 3 ? ' 等' : ''} · ${esc(c.year)} · ${esc(c.journal)}</div>
+            <button class="small" data-pick="${i}">就是这篇</button></div>`).join('') : '<p>没有搜到。</p>'}
+        <p style="margin-top:16px"><button data-pick="manual">都不对，我自己手填</button>
+        ${cands.length ? '' : ''}</p>`);
+      modal.querySelectorAll('[data-pick]').forEach((b) => {
+        b.onclick = () => { const r = pickResolve; pickResolve = null; closeModal(); r(b.dataset.pick === 'manual' ? null : cands[+b.dataset.pick]); };
+      });
+    });
+  }
+
+  async function addFromPdfs(files) {
+    files = [...files].filter((f) => /\.pdf$/i.test(f.name) || f.type === 'application/pdf');
+    if (!files.length) { toast('请选择 PDF 文件'); return; }
+    let added = 0, dup = 0, manual = 0, lastId = null;
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      toast(`正在识别 ${i + 1}/${files.length}：${f.name}`);
+      let info;
+      try { info = await PdfMeta.extract(f); } catch (e) { toast(`读不了 ${f.name}：${e.message}`); continue; }
+      let meta = null;
+      try {
+        if (info.doi) meta = await Crossref.lookup(info.doi);
+        if (!meta) {
+          const cands = info.titleGuess ? await Crossref.search(info.titleGuess) : [];
+          meta = await pickCandidate(f.name, info.titleGuess, cands);
+        }
+      } catch (e) {
+        toast('联网查询失败（' + e.message + '），先用 PDF 里认出的信息');
+      }
+      const key = normDoi(meta && meta.doi).toLowerCase();
+      if (key && D().papers.some((p) => normDoi(p.doi).toLowerCase() === key)) { dup++; continue; }
+      const p = blankPaper();
+      p.pdfName = info.pdfName;
+      if (meta) applyMeta(p, meta);
+      else { p.doi = info.doi; p.title = info.titleGuess; manual++; }
+      D().papers.push(p); added++; lastId = p.id;
+    }
+    S.save();
+    const msg = `新增 ${added} 篇` + (dup ? `，${dup} 篇已存在被跳过` : '') + (manual ? `，${manual} 篇需要你手动补全信息` : '');
+    if (added === 1 && files.length === 1) location.hash = '#/paper/' + lastId;
+    else renderList();
+    setTimeout(() => toast(msg), 50);
+  }
+
+  async function fillFromPdf(p, file) {
+    if (!file) return;
+    toast('正在识别…');
+    try {
+      const info = await PdfMeta.extract(file);
+      let meta = info.doi ? await Crossref.lookup(info.doi) : null;
+      if (!meta) {
+        const cands = info.titleGuess ? await Crossref.search(info.titleGuess) : [];
+        meta = await pickCandidate(file.name, info.titleGuess, cands);
+      }
+      const filled = ['title', 'authors', 'year', 'journal'].filter((k) => p[k]);
+      if (filled.length && !confirm('标题/作者/年份/期刊已经有内容，用识别到的信息覆盖吗？')) return;
+      p.pdfName = file.name;
+      if (meta) applyMeta(p, meta); else { if (info.doi) p.doi = info.doi; if (info.titleGuess) p.title = info.titleGuess; }
+      S.save(); renderCard(p.id);
+      toast(meta ? '已识别。来源类型请你自己判断。' : '没找到匹配，请手动补全');
+    } catch (e) { toast('识别失败：' + e.message); }
   }
 
   // =====================================================
@@ -740,6 +822,22 @@
   }
   window.addEventListener('beforeunload', (e) => {
     if (S.getSync() && S.dirty) { e.preventDefault(); e.returnValue = ''; }
+  });
+
+  // ---------- 拖放 PDF ----------
+  document.addEventListener('dragover', (e) => {
+    if (![...(e.dataTransfer.types || [])].includes('Files')) return;
+    e.preventDefault();
+    const dz = document.getElementById('dropZone'); if (dz) dz.classList.add('over');
+  });
+  document.addEventListener('dragleave', (e) => { if (e.relatedTarget === null) { const dz = document.getElementById('dropZone'); if (dz) dz.classList.remove('over'); } });
+  document.addEventListener('drop', (e) => {
+    if (!e.dataTransfer || !e.dataTransfer.files.length) return;
+    e.preventDefault();
+    const dz = document.getElementById('dropZone'); if (dz) dz.classList.remove('over');
+    const m = (location.hash || '').match(/^#\/paper\/(.+)$/);
+    if (m) { const p = D().papers.find((x) => x.id === m[1]); if (p) { fillFromPdf(p, e.dataTransfer.files[0]); return; } }
+    addFromPdfs(e.dataTransfer.files);
   });
 
   // ---------- 启动 ----------
