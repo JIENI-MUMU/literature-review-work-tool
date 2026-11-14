@@ -191,7 +191,7 @@
     const total = projPapers().length;
     app.innerHTML = `
       ${projHeader('list')}
-      <p class="sub">共 ${total} 篇，全文已读 ${readCount()} 篇。点一行打开笔记卡，<b>右键</b>可以移除，<b>点表头</b>可以排序、筛选已读未读。<b style="color:var(--red)">左边有红线的行</b>=还没读完全文，不能引用。</p>
+      <p class="sub">共 ${total} 篇，全文已读 ${readCount()} 篇。点一行打开笔记卡，<b>右键</b>可以删除，<b>点表头</b>可以排序、筛选已读未读。<b style="color:var(--red)">左边有红线的行</b>=还没读完全文，不能引用。</p>
       <div class="list-tools">
         <div class="lt-cell">
           <label class="btn primary-label" style="margin:0">＋ 从 PDF 新增<input type="file" id="pdfFiles" accept=".pdf,application/pdf" multiple hidden></label>
@@ -293,7 +293,7 @@
           <td class="td-year">${esc(p.year)}</td>
           <td class="td-au" title="${esc(p.authors)}">${esc(shortAuthors(p.authors)) || '<span class="empty-sum">—</span>'}</td>
           <td class="td-read">${p.fullRead ? '✓<span class="m-only"> 已读</span>' : '<span class="tag red">未读</span>'}</td>
-          <td class="td-del"><button type="button" class="del-btn" data-del="${p.id}" title="从这个项目移除">移除</button></td>
+          <td class="td-del"><button type="button" class="del-btn" data-del="${p.id}" title="从这个项目删除">删除</button></td>
         </tr>`).join('')}</tbody></table>`;
     box.querySelectorAll('tbody tr').forEach((tr) => { tr.onclick = () => { location.hash = '#/paper/' + tr.dataset.id; }; });
     box.querySelectorAll('[data-sort]').forEach((th) => { th.onclick = () => onSortClick(th.dataset.sort); });
@@ -321,9 +321,9 @@
   function removeFromProject(id, after) {
     const p = D().papers.find((x) => x.id === id); if (!p) return;
     const others = D().projects.filter((pj) => pj !== P() && pj.items[id]).map((pj) => pj.name);
-    if (!confirm(`把“${p.title || '（未填标题）'}”从项目“${P().name}”移除？\n\n这个项目里对它写的评价和一句话总结会删掉；文章本身和方法、结果等笔记还留在文献库里${others.length ? '，其他项目（' + others.join('、') + '）不受影响' : ''}。`)) return;
+    if (!confirm(`把“${p.title || '（未填标题）'}”从项目“${P().name}”删除？\n\n这个项目里对它写的评价和一句话总结会删掉；文章本身和方法、结果等笔记还留在文献库里${others.length ? '，其他项目（' + others.join('、') + '）不受影响' : ''}。`)) return;
     delete P().items[id]; S.save();
-    toast('已从这个项目移除'); (after || drawRows)();
+    toast('已从这个项目删除'); (after || drawRows)();
   }
   // 从文献库彻底删除：所有项目里都没了，不能恢复
   function deleteFromLibrary(id, after) {
@@ -342,7 +342,7 @@
     m.id = 'rowMenu'; m.className = 'row-menu';
     m.innerHTML = mode === 'library'
       ? '<button type="button" data-m="purge" class="danger">从文献库彻底删除</button>'
-      : '<button type="button" data-m="open">打开</button><button type="button" data-m="del" class="danger">从这个项目移除</button>';
+      : '<button type="button" data-m="del">从这个项目删除</button><button type="button" data-m="purge" class="danger">从文献库彻底删除</button>';
     document.body.appendChild(m);
     const w = m.offsetWidth, h = m.offsetHeight;
     m.style.left = Math.min(x, window.innerWidth - w - 8) + 'px';
@@ -351,7 +351,7 @@
     on('open', () => { location.hash = '#/paper/' + id; });
     on('del', () => removeFromProject(id));
     on('add', () => { const p = D().papers.find((x) => x.id === id); if (p) { addToProject(p); S.save(); toast('已加入当前项目'); renderLibrary(); } });
-    on('purge', () => deleteFromLibrary(id, renderLibrary));
+    on('purge', () => deleteFromLibrary(id, mode === 'library' ? renderLibrary : drawRows));
   }
   document.addEventListener('click', (e) => { if (!e.target.closest('#rowMenu')) hideRowMenu(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideRowMenu(); });
@@ -421,7 +421,7 @@
         <a href="#/list">← 回到文献列表</a>
         <span class="meta-line"><span id="readWarn"></span>最后修改：${esc(fmtDate(p.updatedAt))}</span>
         <span><button class="small" id="btnAI" title="找不到某格的内容时，生成一段提示词，拿去问 Claude">让 AI 指路</button>
-        <button class="danger small" id="btnDel">从这个项目移除</button></span>
+        <button class="danger small" id="btnDel">从这个项目删除</button></span>
       </div>
       <div class="card-layout">
         <nav class="sec-nav" id="secNav"></nav>
