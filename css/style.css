@@ -169,3 +169,39 @@ code { background: #fff; border: 1px solid var(--line); }
 .primary-label { border: 1.5px solid var(--ink); font-weight: 600; }
 .cand { border-top: 1px solid var(--line); padding: 10px 0; }
 .cand button { margin-top: 6px; }
+
+/* ===== 紧凑 + 列表式笔记卡（2026-11-14 用户要求：字和框小一点；A/B/C 大框改成列表） ===== */
+:root { font-size: 14px; }
+body { font-size: 14px; line-height: 1.5; }
+main { max-width: 980px; padding: 16px 20px; }
+h1 { font-size: 19px; }
+.sub { margin-bottom: 14px; font-size: 13px; }
+.topbar { padding: 6px 20px; }
+.brand { font-size: 15px; }
+.nav a { padding: 4px 10px; }
+button, .btn { padding: 4px 11px; font-size: 13px; }
+input[type=text], input[type=password], input[type=search], select, textarea { padding: 5px 8px; font-size: 14px; border-radius: 6px; }
+textarea { min-height: 0; resize: none; overflow: hidden; }
+.help-btn { width: 17px; height: 17px; line-height: 15px; font-size: 11px; }
+.list td { padding: 8px 12px; } .list th { padding: 7px 12px; }
+.warn-box { padding: 6px 12px; margin-bottom: 10px; font-size: 13px; }
+
+/* 笔记卡：每个分区是一组列表行，标签在左、内容在右 */
+.sec { border: none; border-top: 1px solid var(--line); border-radius: 0; padding: 0; margin: 0; }
+.sec:last-of-type { border-bottom: 1px solid var(--line); }
+.sec-head { font-size: 15px; margin: 0; padding: 12px 0 10px; cursor: pointer; user-select: none; }
+.sec-head::before { content: '▾ '; color: var(--muted); }
+.sec.collapsed .sec-head::before { content: '▸ '; }
+.sec.collapsed > :not(.sec-head) { display: none; }
+.sec .part-note { margin: -4px 0 8px; font-size: 12px; }
+.sec .row2, .sec .row3 { display: block; }
+.sec .field { display: grid; grid-template-columns: 190px 1fr; gap: 12px; align-items: start; margin: 0; padding: 7px 0; border-top: 1px dashed #eeece6; }
+.sec .field-label { font-size: 13px; margin: 0; padding-top: 5px; font-weight: 600; }
+.sec .field > :not(.field-label) { grid-column: 2; }
+.sec { margin-bottom: 0; }
+.sec:last-of-type { padding-bottom: 8px; }
+@media (max-width: 720px) {
+  .sec .field { grid-template-columns: 1fr; gap: 4px; }
+  .sec .field > :not(.field-label) { grid-column: 1; }
+}
+.sec .field > button { justify-self: start; }

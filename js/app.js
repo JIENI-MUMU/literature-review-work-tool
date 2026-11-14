@@ -233,8 +233,8 @@
       </div>
       <div id="readWarn"></div>
 
-      <section class="panel">
-        <h2>基本信息</h2>
+      <section class="panel sec" data-sec="basic">
+        <h2 class="sec-head">基本信息</h2>
         <div class="field">${label('doi')}
           <div class="inline"><input type="text" data-f="doi" placeholder="${esc(H.doi.placeholder)}" value="${esc(p.doi)}"><button id="btnDoi">拉取</button><label class="btn" style="margin:0;white-space:nowrap">从 PDF 识别<input type="file" id="pdfOne" accept=".pdf,application/pdf" hidden></label></div>
           ${p.pdfName ? `<div class="meta-line">对应的 PDF 文件：${esc(p.pdfName)}</div>` : ''}
@@ -260,20 +260,20 @@
         </div>
       </section>
 
-      <section class="panel">
-        <h2>A. 它说了什么</h2>
+      <section class="panel sec" data-sec="a">
+        <h2 class="sec-head">A. 它说了什么</h2>
         <p class="part-note">照着原文写，不加评价。</p>
-        ${ta(p, 'aQuestion', 2)}
-        ${ta(p, 'aMethod', 4)}
-        ${ta(p, 'aFindings', 4)}
-        ${ta(p, 'aAuthorLimits', 3)}
+        ${ta(p, 'aQuestion', 1)}
+        ${ta(p, 'aMethod', 1)}
+        ${ta(p, 'aFindings', 1)}
+        ${ta(p, 'aAuthorLimits', 1)}
       </section>
 
-      <section class="panel">
-        <h2>B. 我的看法</h2>
+      <section class="panel sec" data-sec="b">
+        <h2 class="sec-head">B. 我的看法</h2>
         <p class="part-note">用大白话写你的判断。四类不必每篇都写全，能写出一两类就够。拿不准的标“不确定”。</p>
         <div class="field">${label('bEvidence')}
-          <textarea data-f="bEvidence" rows="4" placeholder="${esc(H.bEvidence.placeholder)}">${esc(p.bEvidence)}</textarea>
+          <textarea data-f="bEvidence" rows="1" placeholder="${esc(H.bEvidence.placeholder)}">${esc(p.bEvidence)}</textarea>
           <div style="margin-top:8px;display:flex;gap:10px;align-items:center">
             <span class="meta-line">把握程度</span>
             <span class="seg" id="conf">
@@ -283,19 +283,19 @@
             ${helpBtn('bEvidenceConfidence')}
           </div>
         </div>
-        ${ta(p, 'bApply', 3)}
-        ${ta(p, 'bCompare', 3)}
-        ${ta(p, 'bProves', 3)}
-        ${ta(p, 'bGap', 3)}
+        ${ta(p, 'bApply', 1)}
+        ${ta(p, 'bCompare', 1)}
+        ${ta(p, 'bProves', 1)}
+        ${ta(p, 'bGap', 1)}
       </section>
 
-      <section class="panel">
-        <h2>C. 收尾</h2>
+      <section class="panel sec" data-sec="c">
+        <h2 class="sec-head">C. 收尾</h2>
         <div class="field">${label('quotes')}
           <div id="quotes"></div>
           <button type="button" class="small" id="addQuote">＋ 加一条原话</button>
         </div>
-        ${ta(p, 'summary', 2)}
+        ${ta(p, 'summary', 1)}
       </section>
       <p style="text-align:center"><a href="#/list">← 回到列表</a></p>`;
 
@@ -321,6 +321,20 @@
     };
     drawWarn();
     fr.onchange = () => { p.fullRead = fr.checked; drawWarn(); touch(); updateBanner(); };
+
+    // 分区可折叠（记住折叠状态）
+    let folded = {}; try { folded = JSON.parse(localStorage.getItem('litreview.folded') || '{}'); } catch (e) {}
+    app.querySelectorAll('.sec').forEach((sec) => {
+      if (folded[sec.dataset.sec]) sec.classList.add('collapsed');
+      sec.querySelector('.sec-head').onclick = () => {
+        sec.classList.toggle('collapsed');
+        folded[sec.dataset.sec] = sec.classList.contains('collapsed');
+        try { localStorage.setItem('litreview.folded', JSON.stringify(folded)); } catch (e) {}
+      };
+    });
+    // 文本框随内容自动变高
+    const autosize = (el) => { el.style.height = 'auto'; el.style.height = (el.scrollHeight + 2) + 'px'; };
+    app.querySelectorAll('textarea').forEach((el) => { autosize(el); el.addEventListener('input', () => autosize(el)); });
 
     app.querySelectorAll('#conf button').forEach((b) => {
       b.onclick = () => {
