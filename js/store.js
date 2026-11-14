@@ -1,7 +1,17 @@
 /*
  * 数据存储与自动同步
  *
- * 数据结构（整个对象存为一个 JSON）：
+ * 数据结构（整个对象存为一个 JSON），第 2 版：文献库 + 多个项目
+ * {
+ *   version: 2,
+ *   papers: [ 文献库，每篇只记“原文事实”，所有项目共用（字段见下方 papers 说明，不含项目字段） ],
+ *   projects: [{ id, name, createdAt, questions, questionHistory, reviews, lastReviewReadCount,
+ *                items: { 文献id: { questionIds, bEvidence, bEvidenceConfidence, bApply, bCompare, bProves, bGap, summary, addedAt } } }]
+ * }
+ * 当前项目 id 只存在本机：localStorage 'litreview.currentProject'（不同步）。
+ * 第 1 版数据（没有 projects）会自动迁移进“我的第一个项目”。
+ *
+ * —— 以下是第 1 版的说明，papers 的事实字段不变 ——
  * {
  *   version: 1,
  *   updatedAt: ISO 时间,
@@ -35,15 +45,25 @@
   const SYNC_KEY = 'litreview.sync';
   const FILE = 'data.json';
 
+  // 每篇文献里“只属于某个项目”的字段：对应问题、我的评价、一句话总结
+  const PROJECT_FIELDS = ['questionIds', 'bEvidence', 'bEvidenceConfidence', 'bApply', 'bCompare', 'bProves', 'bGap', 'summary'];
+
+  function newProject(name) {
+    return {
+      id: 'pj' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      name: name || '我的第一个项目',
+      createdAt: new Date().toISOString(),
+      questions: [], questionHistory: [], reviews: [], lastReviewReadCount: 0,
+      items: {}, // 文献 id → { questionIds, bEvidence, ..., summary, addedAt }
+    };
+  }
+
   function emptyData() {
     return {
-      version: 1,
+      version: 2,
       updatedAt: new Date().toISOString(),
-      questions: [],
-      questionHistory: [],
-      papers: [],
-      reviews: [],
-      lastReviewReadCount: 0,
+      papers: [],          // 文献库：所有项目共用的“原文事实”
+      projects: [newProject()],
     };
   }
 
@@ -58,13 +78,38 @@
   }
 
   function normalize(d) {
-    const base = emptyData();
-    const out = Object.assign(base, d || {});
-    out.papers = (out.papers || []).map((p) => {
-      p = Object.assign({ quotes: [], questionIds: [] }, p);
+    d = d || {};
+    const out = { version: 2, updatedAt: d.updatedAt || new Date().toISOString(), papers: [], projects: [] };
+    const papers = (d.papers || []).map((p) => {
+      p = Object.assign({ quotes: [] }, p);
       // 旧版“它查到了什么”迁移到“研究结果”
       if (p.aFindings && !p.rResults) { p.rResults = p.aFindings; p.aFindings = ''; }
       return p;
+    });
+    if (Array.isArray(d.projects) && d.projects.length) {
+      out.projects = d.projects.map((pj) => Object.assign(newProject(pj.name), pj, { items: pj.items || {} }));
+    } else {
+      // 第 1 版数据（没有项目）：全部放进第一个项目
+      const pj = newProject('我的第一个项目');
+      pj.questions = d.questions || [];
+      pj.questionHistory = d.questionHistory || [];
+      pj.reviews = d.reviews || [];
+      pj.lastReviewReadCount = d.lastReviewReadCount || 0;
+      papers.forEach((p) => {
+        const it = { addedAt: p.createdAt || out.updatedAt };
+        PROJECT_FIELDS.forEach((k) => { if (p[k] !== undefined) it[k] = p[k]; });
+        pj.items[p.id] = it;
+      });
+      out.projects = [pj];
+    }
+    // 文献里不再保存项目字段
+    out.papers = papers.map((p) => { const c = Object.assign({}, p); PROJECT_FIELDS.forEach((k) => delete c[k]); return c; });
+    // 补全每个项目条目的默认值
+    out.projects.forEach((pj) => {
+      Object.keys(pj.items).forEach((id) => {
+        if (!out.papers.some((p) => p.id === id)) { delete pj.items[id]; return; }
+        pj.items[id] = Object.assign({ questionIds: [], bEvidence: '', bEvidenceConfidence: '', bApply: '', bCompare: '', bProves: '', bGap: '', summary: '' }, pj.items[id]);
+      });
     });
     return out;
   }
@@ -242,6 +287,16 @@
       return true;
     },
   };
+
+  // ---------- 当前项目 ----------
+  const CUR_KEY = 'litreview.currentProject';
+  store.PROJECT_FIELDS = PROJECT_FIELDS;
+  store.newProject = newProject;
+  store.cur = function () {
+    const id = safeGet(CUR_KEY);
+    return this.data.projects.find((p) => p.id === id) || this.data.projects[0];
+  };
+  store.setCur = function (id) { safeSet(CUR_KEY, id); };
 
   window.Store = store;
 })();
