@@ -316,7 +316,7 @@
     else if (S.syncStatus === 'error') { txt = '⚠ 同步失败：' + (S.syncMessage || ''); cls = 'bad'; }
     else if (S.syncStatus === 'conflict') { txt = '⚠ 两台设备的数据不一样，看页面顶部'; cls = 'bad'; }
     else if (S.syncStatus === 'syncing') { txt = '◌ 已存在本机，正在上传 GitHub…'; }
-    else if (S.dirty) { txt = '已存在本机，几秒后自动上传 GitHub'; }
+    else if (S.dirty) { txt = '已存在本机，约 10 秒后自动上传 GitHub（按“保存”立刻上传）'; }
     else { txt = `✓ 已保存到 GitHub ${hhmm()}`; cls = 'ok'; if (mode === 'manual') toast(`已保存到 GitHub：${sync.owner}/${sync.repo} 的 data.json`); }
     els.forEach((el) => { el.textContent = txt; el.className = 'save-st ' + cls; });
   }

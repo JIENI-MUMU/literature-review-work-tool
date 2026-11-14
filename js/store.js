@@ -152,13 +152,26 @@
     if (res.status === 401 || res.status === 403) throw new Error('令牌无效或没有权限，请到“设置”检查令牌');
     if (!res.ok) throw new Error('读取远端失败：HTTP ' + res.status);
     const j = await res.json();
-    return { exists: true, sha: j.sha, data: normalize(JSON.parse(b64decode(j.content))) };
+    let text;
+    if (j.content) {
+      text = b64decode(j.content);
+    } else {
+      // 文件超过 1MB 时，GitHub 不在这里给内容，要用 raw 方式再取一次（最多 100MB）
+      const raw = await gh(FILE, { headers: { Accept: 'application/vnd.github.raw+json' } });
+      if (!raw.ok) throw new Error('读取远端失败：HTTP ' + raw.status);
+      text = await raw.text();
+    }
+    // 安全检查：读到的不是笔记数据就报错，绝不拿它覆盖本机的笔记
+    let parsed;
+    try { parsed = JSON.parse(text); } catch (e) { throw new Error('GitHub 上的 data.json 读不懂，本机笔记没有被改动'); }
+    if (!parsed || !Array.isArray(parsed.papers)) throw new Error('GitHub 上的 data.json 格式不对，本机笔记没有被改动');
+    return { exists: true, sha: j.sha, data: normalize(parsed) };
   }
 
   async function pushRemote(data, sha) {
     const body = {
       message: '更新文献笔记 ' + new Date().toISOString(),
-      content: b64encode(JSON.stringify(data, null, 2)),
+      content: b64encode(JSON.stringify(data)), // 不加缩进，文件更小
     };
     if (sha) body.sha = sha;
     const res = await gh(FILE, { method: 'PUT', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } });
@@ -203,7 +216,7 @@
     schedulePush() {
       if (!getSync()) return;
       clearTimeout(this._timer);
-      this._timer = setTimeout(() => this.push(), 2500);
+      this._timer = setTimeout(() => this.push(), 10000); // 停手 10 秒再上传，避免仓库里记录太多
     },
 
     async push() {
