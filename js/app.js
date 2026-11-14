@@ -148,6 +148,8 @@
   });
 
   // ---------- 路由 ----------
+  // 文献列表的筛选和排序一行暂时去掉（2026-11-14 用户觉得没用），改成 true 就恢复
+  const FEATURE_LIST_FILTERS = false;
   const listState = { q: '', filter: 'all', unread: false, unsure: false, sort: 'updated' };
 
   function route() {
@@ -203,20 +205,20 @@
           <label class="btn" style="margin:0">导入 Zotero CSV<input type="file" id="zoteroFile" accept=".csv,text/csv" hidden></label>
         </div>
         <div class="lt-cell"><input type="search" id="q" placeholder="搜索标题、作者、总结…" value="${esc(st.q)}"></div>
-        <div class="lt-cell">
+        <div class="lt-cell">${FEATURE_LIST_FILTERS ? `
           <select id="filter">${opts.map(([v, t]) => `<option value="${esc(v)}" ${st.filter === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
           <select id="sort">
             <option value="updated" ${st.sort === 'updated' ? 'selected' : ''}>最近修改</option>
             <option value="year" ${st.sort === 'year' ? 'selected' : ''}>年份</option>
             <option value="title" ${st.sort === 'title' ? 'selected' : ''}>标题</option>
-          </select>
+          </select>` : ''}
         </div>
         <div class="lt-cell"><div class="dropzone compact" id="dropZone" title="PDF 只在你电脑上读取，不会上传，也不会保存。">把 PDF 拖到这里，自动填好信息（可多篇）</div></div>
       </div>
-      <div class="toolbar">
+      ${FEATURE_LIST_FILTERS ? `<div class="toolbar">
         <label class="chk"><input type="checkbox" id="fUnread" ${st.unread ? 'checked' : ''}> 只看未读全文</label>
         <label class="chk"><input type="checkbox" id="fUnsure" ${st.unsure ? 'checked' : ''}> 只看“局限不确定”的（待批改）</label>
-      </div>
+      </div>` : ''}
       <div class="list" id="listBox"></div>`;
     drawRows();
     app.querySelector('#pdfFiles').onchange = (e) => { addFromPdfs(e.target.files); e.target.value = ''; };
@@ -226,10 +228,10 @@
     app.querySelector('#btnNew').onclick = newPaper;
     app.querySelector('#zoteroFile').onchange = (e) => importZotero(e.target.files[0]);
     app.querySelector('#q').oninput = (e) => { st.q = e.target.value; drawRows(); };
-    app.querySelector('#filter').onchange = (e) => { st.filter = e.target.value; drawRows(); };
-    app.querySelector('#sort').onchange = (e) => { st.sort = e.target.value; drawRows(); };
-    app.querySelector('#fUnread').onchange = (e) => { st.unread = e.target.checked; drawRows(); };
-    app.querySelector('#fUnsure').onchange = (e) => { st.unsure = e.target.checked; drawRows(); };
+    if (FEATURE_LIST_FILTERS) app.querySelector('#filter').onchange = (e) => { st.filter = e.target.value; drawRows(); };
+    if (FEATURE_LIST_FILTERS) app.querySelector('#sort').onchange = (e) => { st.sort = e.target.value; drawRows(); };
+    if (FEATURE_LIST_FILTERS) app.querySelector('#fUnread').onchange = (e) => { st.unread = e.target.checked; drawRows(); };
+    if (FEATURE_LIST_FILTERS) app.querySelector('#fUnsure').onchange = (e) => { st.unsure = e.target.checked; drawRows(); };
   }
 
   function drawRows() {
