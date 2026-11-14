@@ -249,3 +249,5 @@ textarea { min-height: 0; resize: none; overflow: hidden; }
 .col-au { width: 160px; }
 .td-au { color: #3a3e44; font-size: 13px; }
 .list .t-sum { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.q-item .q-no { width: auto; min-width: 44px; white-space: nowrap; }
+.q-item button { white-space: nowrap; flex: none; }
