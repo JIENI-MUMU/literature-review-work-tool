@@ -79,6 +79,20 @@
   }
   document.getElementById('syncBadge').addEventListener('click', () => { location.hash = '#/settings'; });
 
+  // 令牌还剩几天
+  function tokenDaysLeft(s) {
+    if (!s || !s.tokenExpires) return null;
+    const end = new Date(s.tokenExpires + 'T23:59:59');
+    return Math.ceil((end - Date.now()) / 864e5);
+  }
+  function tokenNote(s) {
+    const n = tokenDaysLeft(s);
+    if (n === null) return '还没填到期日，到期前就没法提醒你';
+    const src = s.expiryAuto ? '（从 GitHub 自动读取）' : '';
+    if (n < 0) return `<span style="color:var(--red)">已经过期 ${-n} 天${src}</span>`;
+    return `还剩 ${n} 天${src}`;
+  }
+
   function updateBanner() {
     const el = document.getElementById('banner');
     let html = '';
@@ -91,6 +105,10 @@
     } else if (S.syncStatus === 'conflict') {
       html = `<div class="banner red"><span>另一台设备也修改过数据，两份不一样。用哪一份？（另一份会被覆盖）</span>
         <span><button class="small" data-act="use-remote">用另一台设备的</button> <button class="small" data-act="use-local">用这台设备的</button></span></div>`;
+    } else if (S.getSync() && tokenDaysLeft(S.getSync()) !== null && tokenDaysLeft(S.getSync()) <= 14) {
+      const n = tokenDaysLeft(S.getSync()), day = S.getSync().tokenExpires;
+      html = `<div class="banner ${n < 0 ? 'red' : ''}"><span>${n < 0 ? `⚠ <b>同步令牌已经过期</b>（${day}），笔记没法上传到 GitHub 了。` : `同步令牌还有 <b>${n} 天</b>到期（${day}）。到期后笔记就没法上传到 GitHub。`}换一个新令牌只要两分钟，数据不会丢。</span>
+        <span><a class="btn small" href="#/guide" data-act="tokguide">怎么换令牌</a> <a class="btn small" href="#/settings">去设置</a></span></div>`;
     } else {
       const n = readCount() - (P().lastReviewReadCount || 0);
       if (n >= 5 && !location.hash.startsWith('#/review')) {
@@ -114,6 +132,7 @@
     const a = e.target.closest('[data-act]'); if (!a) return;
     if (a.dataset.act === 'use-remote') await S.resolveConflict('remote');
     if (a.dataset.act === 'use-local') await S.resolveConflict('local');
+    if (a.dataset.act === 'tokguide') { setTimeout(() => { const t = document.getElementById('g-sync'); if (t) t.scrollIntoView(); }, 80); }
     if (a.dataset.act === 'retry') { toast('正在重试…'); await S.pull(); if (S.syncStatus === 'idle') toast('已重新同步'); }
     if (a.dataset.act === 'backup') { exportJson(); toast('备份已下载。存到电脑或网盘的固定文件夹里'); }
     if (a.dataset.act === 'snooze') { try { localStorage.setItem('litreview.backupSnooze', String(Date.now() + 3 * 864e5)); } catch (e) {} updateBanner(); }
@@ -1238,6 +1257,10 @@ ${head || '（见附件）'}
         ${s ? `
           <p>已开启。数据存放在 <b>${esc(s.owner)}/${esc(s.repo)}</b> 的 <code>data.json</code>。<a href="https://github.com/${encodeURIComponent(s.owner)}/${encodeURIComponent(s.repo)}/commits/main/data.json" target="_blank" rel="noopener">在 GitHub 上查看保存记录</a></p>
           <p class="meta-line">状态：${esc(S.syncMessage || S.syncStatus)}${s.lastSyncedAt ? '；上次同步：' + esc(fmtDate(s.lastSyncedAt)) : ''}</p>
+          <div class="field" style="margin:10px 0"><div class="field-label">令牌到期日</div>
+            <div class="inline" style="align-items:center;gap:10px"><input type="date" id="tokExp" value="${esc(s.tokenExpires || '')}" style="max-width:200px">
+            <span class="meta-line" id="tokExpNote">${tokenNote(s)}</span></div>
+            <div class="meta-line">在 GitHub 的令牌页面能看到“Expires on …”。快到期前 14 天，页面顶部会提醒你换令牌。</div></div>
           <button id="syncNow">立即同步</button>
           <button class="danger" id="syncOff">断开同步（在公用电脑上用完记得点）</button>`
         : `
@@ -1247,6 +1270,7 @@ ${head || '（见附件）'}
             <div class="field"><div class="field-label">私有仓库名</div><input type="text" id="sRepo" value="literature-review-work-data"></div>
           </div>
           <div class="field"><div class="field-label">令牌（github_pat_ 开头）</div><input type="password" id="sToken" autocomplete="off" placeholder="粘贴令牌"></div>
+          <div class="field"><div class="field-label">令牌到期日（可不填，软件会尽量自动读取）</div><input type="date" id="sExpires" style="max-width:200px"></div>
           <button class="primary" id="syncOn">连接并开启同步</button>
           <span class="meta-line" id="syncMsg"></span>`}
       </section>
@@ -1268,6 +1292,10 @@ ${head || '（见附件）'}
 
     if (s) {
       app.querySelector('#syncNow').onclick = async () => { await S.pull(); renderSettings(); };
+      app.querySelector('#tokExp').onchange = (e) => {
+        const cur = S.getSync(); cur.tokenExpires = e.target.value; cur.expiryAuto = false; S.setSync(cur);
+        app.querySelector('#tokExpNote').innerHTML = tokenNote(cur); updateBanner(); toast('已记下令牌到期日');
+      };
       app.querySelector('#syncOff').onclick = () => {
         if (!confirm('断开后，这台设备不再同步，令牌会从这台设备删除。数据仍保留在本机和 GitHub 上。确定？')) return;
         S.setSync(null); S.setStatus('off'); renderSettings();
@@ -1282,8 +1310,9 @@ ${head || '（见附件）'}
         if (!owner || !repo || !token) { m.textContent = '三项都要填'; return; }
         m.textContent = '正在连接…';
         try {
-          await S.testSync(owner, repo, token);
-          S.setSync({ owner, repo, token, sha: null, lastSyncedAt: null });
+          const info = await S.testSync(owner, repo, token);
+          const manual = (app.querySelector('#sExpires') || {}).value || '';
+          S.setSync({ owner, repo, token, sha: null, lastSyncedAt: null, tokenExpires: info.expires || manual, expiryAuto: !!info.expires });
           await firstSync();
           renderSettings();
           toast('同步已开启');

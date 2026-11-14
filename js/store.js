@@ -135,6 +135,18 @@
   }
   function setSync(s) { if (s) safeSet(SYNC_KEY, JSON.stringify(s)); else safeDel(SYNC_KEY); }
 
+  // GitHub 会在响应头里写令牌到期时间；浏览器允许读的话就自动记下来
+  function parseExpiry(h) {
+    if (!h) return '';
+    const d = new Date(h.replace(' UTC', 'Z').replace(/ ([+-]\d{4})$/, '$1').replace(' ', 'T'));
+    return isNaN(d) ? '' : d.toISOString().slice(0, 10);
+  }
+  function noteExpiry(res) {
+    let h = null; try { h = res.headers.get('github-authentication-token-expiration'); } catch (e) {}
+    const day = parseExpiry(h); const s = getSync();
+    if (day && s && s.tokenExpires !== day) { s.tokenExpires = day; s.expiryAuto = true; setSync(s); }
+  }
+
   async function gh(path, opts = {}) {
     const s = getSync();
     const headers = Object.assign({
@@ -143,7 +155,9 @@
       'X-GitHub-Api-Version': '2022-11-28',
     }, opts.headers || {});
     const url = `https://api.github.com/repos/${s.owner}/${s.repo}/contents/${path}`;
-    return fetch(url, Object.assign({ cache: 'no-store' }, opts, { headers }));
+    const res = await fetch(url, Object.assign({ cache: 'no-store' }, opts, { headers }));
+    noteExpiry(res);
+    return res;
   }
 
   async function fetchRemote() {
@@ -306,7 +320,8 @@
       if (!res.ok) throw new Error('连接失败：HTTP ' + res.status);
       const j = await res.json();
       if (!j.private) throw new Error('这个仓库是公开的！笔记不能放在公开仓库，请换成私有仓库');
-      return true;
+      let h = null; try { h = res.headers.get('github-authentication-token-expiration'); } catch (e) {}
+      return { expires: parseExpiry(h) };
     },
   };
 
