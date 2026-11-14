@@ -135,7 +135,7 @@
     const total = D().papers.length;
     app.innerHTML = `
       <h1>文献列表</h1>
-      <p class="sub">共 ${total} 篇，全文已读 ${readCount()} 篇。点一行打开笔记卡。<b style="color:var(--red)">红色行</b>=还没读完全文，不能引用。</p>
+      <p class="sub">共 ${total} 篇，全文已读 ${readCount()} 篇。点一行打开笔记卡。<b style="color:var(--red)">左边有红线的行</b>=还没读完全文，不能引用。</p>
       <div class="toolbar">
         <button class="primary" id="btnNew">＋ 新增文献</button>
         <label class="btn" style="margin:0">导入 Zotero CSV<input type="file" id="zoteroFile" accept=".csv,text/csv" hidden></label>

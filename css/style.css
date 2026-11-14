@@ -1,15 +1,15 @@
 :root {
-  --bg: #f6f5f1;
+  --bg: #ffffff;
   --card: #ffffff;
   --ink: #1f2328;
   --muted: #6b6f76;
   --line: #e3e1da;
   --accent: #2f5d50;
-  --accent-soft: #e6efeb;
+  --accent-soft: #ffffff;
   --red: #b4372f;
-  --red-soft: #fbecea;
+  --red-soft: #ffffff;
   --amber: #a46a06;
-  --amber-soft: #fdf3dc;
+  --amber-soft: #ffffff;
   --radius: 10px;
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
 }
@@ -147,3 +147,20 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent-soft
 .guide .toc a { margin-right: 14px; }
 code { background: #efede7; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
 ol.steps li { margin-bottom: 6px; }
+
+/* ===== 全白背景（2026-11-14 用户要求：背景全部白色，不要有颜色） ===== */
+.list th, .guide th { background: #fff; }
+.list tbody tr:hover, .list tr.unread:hover { background: #fafafa; }
+.list tr.unread { background: #fff; box-shadow: inset 3px 0 0 var(--red); }
+.nav a:hover { background: #fff; text-decoration: underline; }
+.nav a.active { background: #fff; color: var(--ink); font-weight: 700; text-decoration: underline; text-underline-offset: 6px; }
+button.primary { background: #fff; color: var(--ink); border: 1.5px solid var(--ink); font-weight: 600; }
+.seg button.on, .seg button.on.unsure { background: #fff; color: var(--ink); font-weight: 700; box-shadow: inset 0 -2px 0 var(--ink); }
+.tag { background: #fff; border: 1px solid currentColor; }
+.banner { background: #fff; border: 1px solid var(--line); color: var(--ink); }
+.banner.red, .warn-box { background: #fff; border: 1px solid var(--red); color: var(--red); }
+.modal-body .example, .guide .eg { background: #fff; border: 1px solid var(--line); }
+.modal-body .example b { color: var(--ink); }
+.guide .bad { border-color: var(--red); }
+code { background: #fff; border: 1px solid var(--line); }
+.topbar { border-bottom: 1px solid var(--line); }
