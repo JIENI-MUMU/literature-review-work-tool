@@ -104,7 +104,7 @@
   });
 
   S.onChange(() => {
-    updateBadge(); updateBanner();
+    updateBadge(); updateBanner(); setSaveState();
     if (document.getElementById('sbProjects')) drawSidebar();
     if (S.replaced) { S.replaced = false; route(); }
   });
@@ -305,6 +305,22 @@
     return `<div class="field">${label(key)}<input type="text" data-f="${key}" placeholder="${esc(H[key].placeholder || '')}" value="${esc(p[key])}"></div>`;
   }
 
+  // 笔记卡右上角的保存状态：告诉你数据到底存到哪了
+  const hhmm = () => new Date().toLocaleTimeString('zh-CN', { hour12: false });
+  function setSaveState(mode) {
+    const els = document.querySelectorAll('.save-st'); if (!els.length) return;
+    const sync = S.getSync();
+    let txt, cls = '';
+    if (mode === 'typing') { txt = '正在保存…'; }
+    else if (!sync) { txt = `✓ 已保存在这台设备 ${hhmm()}`; cls = 'ok'; if (mode === 'manual') toast('已保存在这台设备的浏览器里（没开同步，换设备看不到）'); }
+    else if (S.syncStatus === 'error') { txt = '⚠ 同步失败：' + (S.syncMessage || ''); cls = 'bad'; }
+    else if (S.syncStatus === 'conflict') { txt = '⚠ 两台设备的数据不一样，看页面顶部'; cls = 'bad'; }
+    else if (S.syncStatus === 'syncing') { txt = '◌ 已存在本机，正在上传 GitHub…'; }
+    else if (S.dirty) { txt = '已存在本机，几秒后自动上传 GitHub'; }
+    else { txt = `✓ 已保存到 GitHub ${hhmm()}`; cls = 'ok'; if (mode === 'manual') toast(`已保存到 GitHub：${sync.owner}/${sync.repo} 的 data.json`); }
+    els.forEach((el) => { el.textContent = txt; el.className = 'save-st ' + cls; });
+  }
+
   function renderCard(id) {
     const raw = D().papers.find((x) => x.id === id);
     if (!raw) { app.innerHTML = '<div class="empty">找不到这篇文献。<a href="#/list">回到列表</a></div>'; return; }
@@ -426,7 +442,17 @@
 
     // 自动保存
     let saveT;
-    const touch = () => { p.updatedAt = new Date().toISOString(); clearTimeout(saveT); saveT = setTimeout(() => S.save(), 400); };
+    const touch = () => {
+      p.updatedAt = new Date().toISOString(); clearTimeout(saveT);
+      setSaveState('typing');
+      saveT = setTimeout(() => { S.save(); setSaveState(); }, 400);
+    };
+    // 手动“保存”：立刻存到这台设备；开了同步就立刻上传 GitHub，不等那几秒
+    const saveNow = async () => {
+      clearTimeout(saveT); p.updatedAt = new Date().toISOString(); S.save();
+      if (S.getSync()) { clearTimeout(S._timer); setSaveState(); await S.push(); }
+      setSaveState('manual');
+    };
 
     app.querySelectorAll('[data-f]').forEach((el) => {
       const ev = el.tagName === 'SELECT' ? 'change' : 'input';
@@ -483,6 +509,14 @@
     };
     SECS.forEach(([k], i) => {
       const sec = app.querySelector(`.sec[data-sec="${k}"]`);
+      // 每一部分右上角：保存状态 + 保存按钮
+      const head = sec.querySelector('.sec-head');
+      const top = document.createElement('div'); top.className = 'sec-top';
+      head.replaceWith(top); top.appendChild(head);
+      const sv = document.createElement('div'); sv.className = 'sec-save';
+      sv.innerHTML = '<span class="save-st" title="点“保存”看数据存在哪里"></span><button type="button" class="small save-btn">保存</button>';
+      top.appendChild(sv);
+      sv.querySelector('.save-btn').onclick = saveNow;
       const nxt = SECS[i + 1];
       const bar = document.createElement('div'); bar.className = 'sec-next';
       bar.innerHTML = (i > 0 ? `<button type="button" data-step="${SECS[i - 1][0]}">← ${SECS[i - 1][1]}</button>` : '<span></span>') +
@@ -490,6 +524,7 @@
       sec.appendChild(bar);
     });
     app.querySelectorAll('[data-step]').forEach((b) => { b.onclick = () => show(b.dataset.step); });
+    setSaveState();
     const layout = app.querySelector('.card-layout');
     layout.addEventListener('input', () => drawNav());
     layout.addEventListener('change', () => drawNav());
@@ -1182,7 +1217,7 @@ ${head || '（见附件）'}
       <section class="panel">
         <h2>自动同步</h2>
         ${s ? `
-          <p>已开启。数据存放在 <b>${esc(s.owner)}/${esc(s.repo)}</b> 的 <code>data.json</code>。</p>
+          <p>已开启。数据存放在 <b>${esc(s.owner)}/${esc(s.repo)}</b> 的 <code>data.json</code>。<a href="https://github.com/${encodeURIComponent(s.owner)}/${encodeURIComponent(s.repo)}/commits/main/data.json" target="_blank" rel="noopener">在 GitHub 上查看保存记录</a></p>
           <p class="meta-line">状态：${esc(S.syncMessage || S.syncStatus)}${s.lastSyncedAt ? '；上次同步：' + esc(fmtDate(s.lastSyncedAt)) : ''}</p>
           <button id="syncNow">立即同步</button>
           <button class="danger" id="syncOff">断开同步（在公用电脑上用完记得点）</button>`

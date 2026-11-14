@@ -57,6 +57,9 @@
 
 ## 5. 数据存储
 
+**保存按钮**（用户要求，为了安心）：笔记卡每一部分右上角有“保存”按钮和状态文字。输入时 0.4 秒后自动存本机；开了同步约 2.5 秒后自动上传。按“保存”会立刻存本机并立刻上传。状态文字说明数据在哪：“已保存在这台设备”/“已存在本机，几秒后自动上传 GitHub”/“已保存到 GitHub 时间”/“同步失败”。设置页有链接可看 GitHub 上 data.json 的保存记录。
+
+
 - 数据结构第 2 版：`{ version: 2, papers: [文献库], projects: [{ id, name, questions, questionHistory, reviews, lastReviewReadCount, items: { 文献id: {项目字段} } }] }`。第 1 版数据打开时自动迁移进“我的第一个项目”。
 - 默认：浏览器 localStorage（键名 `litreview.v1`，名字没改）。换设备靠导出/导入 JSON。
 - 可选同步：GitHub 私有仓库（默认 `literature-review-work-data`）里的 `data.json`，通过 GitHub Contents API 读写。用户在设置里填一次 fine-grained token（只授权该仓库的 Contents 读写）。冲突时让用户选择用哪一份。

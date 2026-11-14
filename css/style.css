@@ -329,3 +329,10 @@ table.cmp tbody tr:last-child td { border-bottom: none; }
 /* 使用说明、设置放到边栏底部，同步状态上面 */
 .sb-foot { display: flex; flex-direction: column; gap: 2px; padding: 12px 0 0; border-top: 1px solid var(--line); }
 .sb-foot .sync-badge { padding: 8px 8px 0; }
+/* 笔记卡每部分右上角的保存 */
+.sec-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.sec-save { display: flex; align-items: center; gap: 8px; }
+.save-st { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.save-st.ok { color: #2e7d4f; }
+.save-st.bad { color: var(--red); }
+@media (max-width: 720px) { .sec-top { flex-wrap: wrap; } .save-st { white-space: normal; } }
