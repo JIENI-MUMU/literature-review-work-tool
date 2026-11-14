@@ -205,6 +205,7 @@
   function newPaper() {
     const p = blankPaper();
     D().papers.push(p); S.save();
+    renderCard.lastSec = 'basic';
     location.hash = '#/paper/' + p.id;
   }
 
@@ -232,6 +233,9 @@
         <button class="danger small" id="btnDel">删除这篇</button>
       </div>
       <div id="readWarn"></div>
+      <div class="card-layout">
+        <nav class="sec-nav" id="secNav"></nav>
+        <div class="sec-body">
 
       <section class="panel sec" data-sec="basic">
         <h2 class="sec-head">基本信息</h2>
@@ -297,7 +301,8 @@
         </div>
         ${ta(p, 'summary', 1)}
       </section>
-      <p style="text-align:center"><a href="#/list">← 回到列表</a></p>`;
+        </div>
+      </div>`;
 
     // 自动保存
     let saveT;
@@ -322,19 +327,51 @@
     drawWarn();
     fr.onchange = () => { p.fullRead = fr.checked; drawWarn(); touch(); updateBanner(); };
 
-    // 分区可折叠（记住折叠状态）
-    let folded = {}; try { folded = JSON.parse(localStorage.getItem('litreview.folded') || '{}'); } catch (e) {}
-    app.querySelectorAll('.sec').forEach((sec) => {
-      if (folded[sec.dataset.sec]) sec.classList.add('collapsed');
-      sec.querySelector('.sec-head').onclick = () => {
-        sec.classList.toggle('collapsed');
-        folded[sec.dataset.sec] = sec.classList.contains('collapsed');
-        try { localStorage.setItem('litreview.folded', JSON.stringify(folded)); } catch (e) {}
-      };
+    const autosize = (el) => { if (!el.offsetParent) return; el.style.height = 'auto'; el.style.height = (el.scrollHeight + 2) + 'px'; };
+    // 左栏目录：点哪一项，右边只显示那一项
+    const SECS = [
+      ['basic', '基本信息', () => [p.title, p.authors, p.year, p.journal, p.sourceType, (p.questionIds || []).length ? 1 : ''], 6],
+      ['a', 'A. 它说了什么', () => [p.aQuestion, p.aMethod, p.aFindings, p.aAuthorLimits], 4],
+      ['b', 'B. 我的看法', () => [p.bEvidence, p.bApply, p.bCompare, p.bProves, p.bGap], 5],
+      ['c', 'C. 收尾', () => [(p.quotes || []).length ? 1 : '', p.summary], 2],
+    ];
+    const nav = app.querySelector('#secNav');
+    let active = renderCard.lastSec || 'basic';
+    // 目录只建一次，之后只更新计数和高亮（重建会吞掉点击）
+    nav.innerHTML = SECS.map(([k, name]) => `<button type="button" data-go="${k}"><span>${name}</span><span class="cnt"></span></button>`).join('');
+    nav.querySelectorAll('[data-go]').forEach((b) => { b.onclick = () => show(b.dataset.go); });
+    const drawNav = () => {
+      SECS.forEach(([k, , vals, n]) => {
+        const b = nav.querySelector(`[data-go="${k}"]`);
+        const done = vals().filter((v) => String(v || '').trim()).length;
+        b.classList.toggle('on', k === active);
+        const c = b.querySelector('.cnt');
+        c.textContent = `${done}/${n}`;
+        c.classList.toggle('full', done === n);
+      });
+    };
+    const show = (k) => {
+      active = k; renderCard.lastSec = k;
+      app.querySelectorAll('.sec').forEach((sec) => { sec.hidden = sec.dataset.sec !== k; });
+      drawNav();
+      app.querySelectorAll('.sec:not([hidden]) textarea').forEach((el) => autosize(el));
+      const top = app.querySelector('.card-layout'); if (top && top.getBoundingClientRect().top < 0) top.scrollIntoView();
+    };
+    SECS.forEach(([k], i) => {
+      const sec = app.querySelector(`.sec[data-sec="${k}"]`);
+      const nxt = SECS[i + 1];
+      const bar = document.createElement('div'); bar.className = 'sec-next';
+      bar.innerHTML = (i > 0 ? `<button type="button" data-step="${SECS[i - 1][0]}">← ${SECS[i - 1][1]}</button>` : '<span></span>') +
+        (nxt ? `<button type="button" data-step="${nxt[0]}">下一步：${nxt[1]} →</button>` : '<a class="btn" href="#/list">完成，回到列表</a>');
+      sec.appendChild(bar);
     });
+    app.querySelectorAll('[data-step]').forEach((b) => { b.onclick = () => show(b.dataset.step); });
+    const layout = app.querySelector('.card-layout');
+    layout.addEventListener('input', () => drawNav());
+    layout.addEventListener('change', () => drawNav());
     // 文本框随内容自动变高
-    const autosize = (el) => { el.style.height = 'auto'; el.style.height = (el.scrollHeight + 2) + 'px'; };
-    app.querySelectorAll('textarea').forEach((el) => { autosize(el); el.addEventListener('input', () => autosize(el)); });
+    app.querySelectorAll('textarea').forEach((el) => { el.addEventListener('input', () => autosize(el)); });
+    show(active);
 
     app.querySelectorAll('#conf button').forEach((b) => {
       b.onclick = () => {
@@ -364,7 +401,7 @@
       });
     };
     drawQuotes();
-    app.querySelector('#addQuote').onclick = () => { p.quotes.push({ text: '', page: '' }); drawQuotes(); touch(); };
+    app.querySelector('#addQuote').onclick = () => { p.quotes.push({ text: '', page: '' }); drawQuotes(); touch(); drawNav(); };
 
     app.querySelector('#btnDoi').onclick = () => fetchDoi(p);
     app.querySelector('#pdfOne').onchange = (e) => { fillFromPdf(p, e.target.files[0]); e.target.value = ''; };
@@ -402,6 +439,7 @@
       const m = await Crossref.lookup(doi);
       if (!m) { toast('找不到这个 DOI，检查一下有没有抄错'); return; }
       applyMeta(p, m);
+      p.doi = normDoi(m.doi || doi);
       S.save();
       renderCard(p.id);
       toast('已拉取。来源类型请你自己判断。');
@@ -460,7 +498,7 @@
     }
     S.save();
     const msg = `新增 ${added} 篇` + (dup ? `，${dup} 篇已存在被跳过` : '') + (manual ? `，${manual} 篇需要你手动补全信息` : '');
-    if (added === 1 && files.length === 1) location.hash = '#/paper/' + lastId;
+    if (added === 1 && files.length === 1) { renderCard.lastSec = 'basic'; location.hash = '#/paper/' + lastId; }
     else renderList();
     setTimeout(() => toast(msg), 50);
   }
