@@ -476,10 +476,13 @@
   function buildAiPrompt(p, keys) {
     const items = AI_FIELDS.filter(([k]) => keys.includes(k));
     const head = [p.title && `标题：${p.title}`, p.authors && `作者：${p.authors}`, p.year && `年份：${p.year}`, p.doi && `DOI：${p.doi}`].filter(Boolean).join('\n');
-    return `我在练习自己读文献、写笔记。我上传了一篇论文的 PDF：
+    return `请帮我在这篇论文里找到下面 ${items.length} 项内容的出处：
+${items.map(([k, sec, desc], i) => `${i + 1}. 【${sec}｜${H[k].label}】${desc}`).join('\n')}
+
+论文（PDF 已上传）：
 ${head || '（见附件）'}
 
-请你只帮我“指路”，不要替我写笔记。下面每一项，请按这个格式回答：
+我在练习自己读文献、写笔记。请你只帮我“指路”，不要替我写笔记。每一项按这个格式回答：
 - 出处：在哪一部分（章节名）、第几页
 - 原文：把原文里最关键的那一句照抄下来（保留英文原文，不要改写，不要翻译）
 - 提示：用一句中文告诉我这一项该注意什么，不超过 20 个字
@@ -487,10 +490,7 @@ ${head || '（见附件）'}
 规则：
 1. 原文里没有写到的，直接回答“原文没有写”，不要猜，不要用常识补。没写清楚本身就是重要信息。
 2. 不要评价这篇文章的好坏，不要告诉我它有什么局限（作者自己承认的局限除外），不要给我写“我的看法”。
-3. 数字必须是原文里的数字，标明页码。
-
-需要指路的项目：
-${items.map(([k, sec, desc], i) => `${i + 1}. 【${sec}｜${H[k].label}】${desc}`).join('\n')}`;
+3. 数字必须是原文里的数字，标明页码。`;
   }
 
   function openAiGuide(p) {
@@ -513,6 +513,9 @@ ${items.map(([k, sec, desc], i) => `${i + 1}. 【${sec}｜${H[k].label}】${desc
     const draw = () => {
       const keys = [...modal.querySelectorAll('[data-ai]:checked')].map((c) => c.dataset.ai);
       ta.value = keys.length ? buildAiPrompt(p, keys) : '至少勾选一项。';
+      ta.scrollTop = 0;
+      const msg = modal.querySelector('#aiMsg');
+      if (msg) msg.textContent = keys.length ? `提示词已更新：现在问 ${keys.length} 项` : '';
     };
     modal.querySelectorAll('[data-ai]').forEach((c) => { c.onchange = draw; });
     draw();
