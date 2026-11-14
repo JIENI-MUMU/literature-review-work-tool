@@ -499,7 +499,7 @@ ${head || '（见附件）'}
       <p class="meta-line">找不到某一格的内容时用。网页会生成一段提示词，你把 PDF 和提示词一起发给 Claude，它会告诉你每一项<b>在第几页、原文怎么说</b>。你翻到那一页核对，再用自己的话填。<br><b>“我的评价”不在这里，那部分要你自己写。</b></p>
       <div class="field-label" style="margin-top:12px">要问哪几格？（默认勾选还空着的）</div>
       <div class="ai-checks">${AI_FIELDS.map(([k, sec]) => `<label><input type="checkbox" data-ai="${k}" ${empty.includes(k) ? 'checked' : ''}> <span class="meta-line">${sec}｜</span>${esc(H[k].label)}</label>`).join('')}</div>
-      <textarea id="aiPrompt" readonly rows="8" style="margin-top:12px;font-size:12px"></textarea>
+      <textarea id="aiPrompt" readonly style="margin-top:12px;font-size:12px"></textarea>
       <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">
         <button class="primary" id="aiCopy">复制提示词</button>
         <a class="btn" href="https://claude.ai/new" target="_blank" rel="noopener">打开 Claude</a>

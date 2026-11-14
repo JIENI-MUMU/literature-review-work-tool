@@ -227,3 +227,5 @@ textarea { min-height: 0; resize: none; overflow: hidden; }
 .ai-checks label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
 @media (max-width: 720px) { .ai-checks { grid-template-columns: 1fr; } }
 .card-head > span { display: inline-flex; gap: 8px; }
+/* AI 指路的提示词框：可以滚动、可以拖大 */
+#aiPrompt { overflow-y: auto; resize: vertical; height: 260px; max-height: 50vh; }
