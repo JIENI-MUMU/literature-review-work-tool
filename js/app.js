@@ -82,7 +82,13 @@
   function updateBanner() {
     const el = document.getElementById('banner');
     let html = '';
-    if (S.syncStatus === 'conflict') {
+    if (S.localFailed) {
+      html = `<div class="banner red"><span>⚠ <b>没能保存到这台设备</b>（浏览器存储可能满了或被禁用）。刚才的修改可能会丢，请马上下载备份。</span>
+        <span><button class="small" data-act="backup">立刻下载备份</button></span></div>`;
+    } else if (S.getSync() && S.syncStatus === 'error') {
+      html = `<div class="banner red"><span>⚠ <b>笔记没能上传到 GitHub</b>：${esc(S.syncMessage)}。笔记还在这台设备上，不会丢；联网后会自动重试。</span>
+        <span><button class="small" data-act="retry">立刻重试</button> <a class="btn small" href="#/settings">去设置</a></span></div>`;
+    } else if (S.syncStatus === 'conflict') {
       html = `<div class="banner red"><span>另一台设备也修改过数据，两份不一样。用哪一份？（另一份会被覆盖）</span>
         <span><button class="small" data-act="use-remote">用另一台设备的</button> <button class="small" data-act="use-local">用这台设备的</button></span></div>`;
     } else {
@@ -108,11 +114,15 @@
     const a = e.target.closest('[data-act]'); if (!a) return;
     if (a.dataset.act === 'use-remote') await S.resolveConflict('remote');
     if (a.dataset.act === 'use-local') await S.resolveConflict('local');
+    if (a.dataset.act === 'retry') { toast('正在重试…'); await S.pull(); if (S.syncStatus === 'idle') toast('已重新同步'); }
     if (a.dataset.act === 'backup') { exportJson(); toast('备份已下载。存到电脑或网盘的固定文件夹里'); }
     if (a.dataset.act === 'snooze') { try { localStorage.setItem('litreview.backupSnooze', String(Date.now() + 3 * 864e5)); } catch (e) {} updateBanner(); }
   });
 
+  let lastSt = S.syncStatus;
   S.onChange(() => {
+    if (S.syncStatus === 'error' && lastSt !== 'error') toast('⚠ 笔记没能上传到 GitHub：' + S.syncMessage);
+    lastSt = S.syncStatus;
     updateBadge(); updateBanner(); setSaveState();
     if (document.getElementById('sbProjects')) drawSidebar();
     if (S.replaced) { S.replaced = false; route(); }
@@ -1370,6 +1380,8 @@ ${head || '（见附件）'}
     });
     setInterval(() => { if (S.getSync() && document.visibilityState === 'visible' && !S.dirty) S.pull(); }, 120000);
   }
+  window.addEventListener('online', () => { if (S.getSync()) S.pull(); });
+  setInterval(() => { if (S.getSync() && S.syncStatus === 'error' && document.visibilityState === 'visible') S.pull(); }, 60000);
   window.addEventListener('beforeunload', (e) => {
     if (S.getSync() && S.dirty) { e.preventDefault(); e.returnValue = ''; }
   });

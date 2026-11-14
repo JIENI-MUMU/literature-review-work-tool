@@ -182,6 +182,13 @@
     return { sha: j.content.sha };
   }
 
+  // 把技术错误翻译成看得懂的话
+  function friendly(e) {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return '现在没联网';
+    if (e && (e.name === 'TypeError' || /fetch|network/i.test(e.message || ''))) return '连不上 GitHub（可能断网了）';
+    return (e && e.message) || '未知错误';
+  }
+
   // ---------- Store ----------
   const listeners = [];
   const store = {
@@ -196,7 +203,8 @@
 
     save() {
       this.data.updatedAt = new Date().toISOString();
-      safeSet(KEY, JSON.stringify(this.data));
+      // 存本机失败（比如浏览器存储满了、被禁用）要让界面知道，不能悄悄失败
+      this.localFailed = !safeSet(KEY, JSON.stringify(this.data));
       this.dirty = true;
       this.schedulePush();
       this.emit(); // 让左边栏的篇数等即时更新
@@ -236,7 +244,7 @@
         this.dirty = false;
         this.setStatus('idle', '已同步 ' + new Date().toLocaleTimeString('zh-CN', { hour12: false }));
       } catch (e) {
-        this.setStatus('error', e.message);
+        this.setStatus('error', friendly(e));
       }
     },
 
@@ -267,7 +275,7 @@
           this.setStatus('conflict', '另一台设备也修改过数据');
         }
       } catch (e) {
-        this.setStatus('error', e.message);
+        this.setStatus('error', friendly(e));
       }
     },
 
