@@ -245,3 +245,7 @@ textarea { min-height: 0; resize: none; overflow: hidden; }
 .lt-cell input[type=search] { width: 100%; max-width: none; }
 .dropzone.compact { width: 100%; margin: 0; padding: 5px 10px; font-size: 13px; line-height: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 720px) { .list-tools { grid-template-columns: 1fr; } .lt-cell select { max-width: none; flex: 1; } }
+.list th { white-space: nowrap; }
+.col-au { width: 160px; }
+.td-au { color: #3a3e44; font-size: 13px; }
+.list .t-sum { font-size: 13px; color: var(--muted); margin-top: 2px; }

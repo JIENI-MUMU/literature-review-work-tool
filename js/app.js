@@ -181,12 +181,12 @@
     }
     if (!ps.length) { box.innerHTML = '<div class="empty">没有符合筛选条件的文献。</div>'; return; }
     box.innerHTML = `<table>
-      <thead><tr><th>标题</th><th class="col-year">年份</th><th>一句话总结</th><th class="col-q">对应问题</th><th class="col-read">全文已读</th><th class="col-del"></th></tr></thead>
+      <thead><tr><th>标题</th><th class="col-year">年份</th><th class="col-au">作者</th><th class="col-q">对应问题</th><th class="col-read">全文已读</th><th class="col-del"></th></tr></thead>
       <tbody>${ps.map((p) => `
         <tr class="${p.fullRead ? '' : 'unread'}" data-id="${p.id}">
-          <td><div class="t-title">${esc(p.title || '（未填标题）')}</div>${p.titleZh ? `<div class="t-zh">${esc(p.titleZh)}</div>` : ''}</td>
+          <td><div class="t-title">${esc(p.title || '（未填标题）')}</div>${p.titleZh ? `<div class="t-zh">${esc(p.titleZh)}</div>` : ''}${p.summary ? `<div class="t-sum">→ ${esc(p.summary)}</div>` : ''}${p.bEvidenceConfidence === 'unsure' ? '<span class="tag unsure">局限待批改</span>' : ''}</td>
           <td class="td-year">${esc(p.year)}</td>
-          <td class="t-sum">${p.summary ? esc(p.summary) : '<span class="empty-sum">还没写</span>'}${p.bEvidenceConfidence === 'unsure' ? ' <span class="tag unsure">局限待批改</span>' : ''}</td>
+          <td class="td-au" title="${esc(p.authors)}">${esc(shortAuthors(p.authors)) || '<span class="empty-sum">—</span>'}</td>
           <td class="col-q">${qTags(p)}</td>
           <td class="td-read">${p.fullRead ? '✓<span class="m-only"> 已读</span>' : '<span class="tag red">未读</span>'}</td>
           <td class="td-del"><button type="button" class="del-btn" data-del="${p.id}" title="删除这篇">删除</button></td>
@@ -203,6 +203,13 @@
         showRowMenu(e.clientX, e.clientY, tr.dataset.id);
       });
     });
+  }
+
+  // 列表里只显示第一作者，多位作者加“等”；鼠标停上去看全部
+  function shortAuthors(a) {
+    const list = String(a || '').split(';').map((x) => x.trim()).filter(Boolean);
+    if (!list.length) return '';
+    return list.length > 1 ? list[0] + ' 等' : list[0];
   }
 
   function deletePaper(id) {
