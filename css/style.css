@@ -336,3 +336,13 @@ textarea { min-height: 0; resize: none; overflow: hidden; }
 .save-st.bad { color: var(--red); }
 @media (max-width: 720px) { .sec-top { flex-wrap: wrap; } .save-st { white-space: normal; } }
 .unread-note { font-size: 12px; color: var(--red); }
+/* 筛选按钮和面板 */
+.filter-btn.on { border-color: var(--ink); font-weight: 600; }
+.filter-sum { font-size: 12px; color: var(--muted); }
+.link-btn { border: none; background: none; padding: 0 2px; font-size: 12px; color: var(--muted); text-decoration: underline; cursor: pointer; }
+.link-btn:hover { color: var(--ink); }
+.filter-pop { min-width: 200px; padding: 10px 12px; gap: 4px; }
+.filter-pop label { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; padding: 2px 0; }
+.fp-title { font-size: 12px; font-weight: 600; color: var(--muted); margin-top: 6px; }
+.fp-years { max-height: 180px; overflow-y: auto; }
+.fp-foot { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 8px; }

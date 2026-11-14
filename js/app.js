@@ -146,7 +146,7 @@
 
   // ---------- 路由 ----------
   // 排序和筛选做在表头上：点“年份”“作者”“标题”排序，点“全文已读”切换只看未读/已读
-  const listState = { q: '', sort: 'updated', read: 'all' };
+  const listState = { q: '', sort: 'updated', read: 'all', years: [] }; // years 为空 = 全部年份
 
   function route() {
     const h = location.hash || '#/list';
@@ -174,6 +174,7 @@
       const q = st.q.toLowerCase();
       ps = ps.filter((p) => [p.title, p.titleZh, p.authors, p.journal, p.summary, p.year].join(' ').toLowerCase().includes(q));
     }
+    if (st.years.length) ps = ps.filter((p) => st.years.includes(String(p.year || '').trim() || '无年份'));
     if (st.read === 'unread') ps = ps.filter((p) => !p.fullRead);
     else if (st.read === 'read') ps = ps.filter((p) => p.fullRead);
     const by = (f) => (a, b) => String(f(a) || '').localeCompare(String(f(b) || ''));
@@ -199,7 +200,7 @@
           <label class="btn" style="margin:0">导入 Zotero CSV<input type="file" id="zoteroFile" accept=".csv,text/csv" hidden></label>
         </div>
         <div class="lt-cell"><input type="search" id="q" placeholder="搜索标题、作者、总结…" value="${esc(st.q)}"></div>
-        <div class="lt-cell"></div>
+        <div class="lt-cell"><button type="button" id="btnFilter" class="filter-btn">筛选 ▾</button><span id="filterSum" class="filter-sum"></span></div>
         <div class="lt-cell"><div class="dropzone compact" id="dropZone" title="PDF 只在你电脑上读取，不会上传，也不会保存。">把 PDF 拖到这里，自动填好信息（可多篇）</div></div>
       </div>
 
@@ -212,6 +213,7 @@
     app.querySelector('#btnNew').onclick = newPaper;
     app.querySelector('#zoteroFile').onchange = (e) => importZotero(e.target.files[0]);
     app.querySelector('#q').oninput = (e) => { st.q = e.target.value; drawRows(); };
+    app.querySelector('#btnFilter').onclick = (e) => { e.stopPropagation(); openFilter(e.currentTarget); };
   }
 
   function sortHead() {
@@ -232,7 +234,45 @@
     drawRows();
   }
 
+  // 筛选面板：年份（可多选）+ 阅读状态
+  function openFilter(btn) {
+    hideRowMenu();
+    const st = listState;
+    const years = [...new Set(projPapers().map((p) => String(p.year || '').trim() || '无年份'))]
+      .sort((a, b) => (a === '无年份') - (b === '无年份') || b.localeCompare(a));
+    const m = document.createElement('div'); m.id = 'rowMenu'; m.className = 'row-menu filter-pop';
+    m.innerHTML = `
+      <div class="fp-title">阅读状态</div>
+      ${[['all', '全部'], ['unread', '只看未读'], ['read', '只看已读']].map(([v, t]) => `<label><input type="radio" name="fpRead" value="${v}" ${st.read === v ? 'checked' : ''}> ${t}</label>`).join('')}
+      <div class="fp-title">年份 <span class="meta-line">（不勾 = 全部）</span></div>
+      <div class="fp-years">${years.length ? years.map((y) => `<label><input type="checkbox" data-year="${esc(y)}" ${st.years.includes(y) ? 'checked' : ''}> ${esc(y)}</label>`).join('') : '<span class="meta-line">还没有文献</span>'}</div>
+      <div class="fp-foot"><button type="button" class="small" id="fpClear">清除筛选</button></div>`;
+    document.body.appendChild(m);
+    const r = btn.getBoundingClientRect();
+    m.style.left = Math.min(r.left, window.innerWidth - m.offsetWidth - 8) + 'px';
+    m.style.top = Math.min(r.bottom + 4, window.innerHeight - m.offsetHeight - 8) + 'px';
+    m.addEventListener('click', (e) => e.stopPropagation()); // 在面板里点不会关掉面板
+    m.querySelectorAll('[name="fpRead"]').forEach((x) => { x.onchange = () => { st.read = x.value; drawRows(); }; });
+    m.querySelectorAll('[data-year]').forEach((x) => {
+      x.onchange = () => {
+        st.years = [...m.querySelectorAll('[data-year]:checked')].map((c) => c.dataset.year);
+        drawRows();
+      };
+    });
+    m.querySelector('#fpClear').onclick = () => { st.read = 'all'; st.years = []; hideRowMenu(); drawRows(); };
+  }
+  function drawFilterSum() {
+    const el = document.getElementById('filterSum'); if (!el) return;
+    const st = listState, parts = [];
+    if (st.read !== 'all') parts.push(st.read === 'unread' ? '只看未读' : '只看已读');
+    if (st.years.length) parts.push(st.years.join('、'));
+    el.innerHTML = parts.length ? `${esc(parts.join(' · '))} <button type="button" class="link-btn" id="fsClear">清除</button>` : '';
+    const c = document.getElementById('fsClear'); if (c) c.onclick = () => { st.read = 'all'; st.years = []; drawRows(); };
+    const b = document.getElementById('btnFilter'); if (b) b.classList.toggle('on', parts.length > 0);
+  }
+
   function drawRows() {
+    drawFilterSum();
     const box = document.getElementById('listBox'); if (!box) return;
     const ps = filteredPapers();
     if (!projPapers().length) {
@@ -240,8 +280,9 @@
       return;
     }
     if (!ps.length) {
-      box.innerHTML = `<div class="empty">没有符合的文章。${listState.read !== 'all' ? '<br><button class="small" id="clrRead">显示全部</button>' : ''}</div>`;
-      const c = box.querySelector('#clrRead'); if (c) c.onclick = () => { listState.read = 'all'; drawRows(); };
+      const filtered = listState.read !== 'all' || listState.years.length;
+      box.innerHTML = `<div class="empty">没有符合的文章。${filtered ? '<br><button class="small" id="clrRead">清除筛选</button>' : ''}</div>`;
+      const c = box.querySelector('#clrRead'); if (c) c.onclick = () => { listState.read = 'all'; listState.years = []; drawRows(); };
       return;
     }
     box.innerHTML = `<table>
@@ -314,7 +355,7 @@
   }
   document.addEventListener('click', (e) => { if (!e.target.closest('#rowMenu')) hideRowMenu(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideRowMenu(); });
-  window.addEventListener('scroll', hideRowMenu, true);
+  window.addEventListener('scroll', (e) => { if (!(e.target.closest && e.target.closest('#rowMenu'))) hideRowMenu(); }, true);
   window.addEventListener('hashchange', hideRowMenu);
 
   function blankPaper() {
