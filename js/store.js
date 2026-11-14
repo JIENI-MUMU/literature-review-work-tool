@@ -196,6 +196,11 @@
     return { sha: j.content.sha };
   }
 
+  // 内容指纹：不算“最后修改时间”，只看真正的笔记内容有没有变
+  function contentSig(d) {
+    return JSON.stringify(d, (k, v) => (k === 'updatedAt' ? undefined : v));
+  }
+
   // 把技术错误翻译成看得懂的话
   function friendly(e) {
     if (typeof navigator !== 'undefined' && navigator.onLine === false) return '现在没联网';
@@ -244,6 +249,13 @@
     async push() {
       const s = getSync();
       if (!s) return;
+      // 内容和上次上传的一模一样，就不再上传（避免 GitHub 里多出一堆没变化的记录）
+      const sig = contentSig(this.data);
+      if (s.sha && this._lastSig === sig) {
+        this.dirty = false;
+        this.setStatus('idle', '已同步 ' + new Date().toLocaleTimeString('zh-CN', { hour12: false }));
+        return;
+      }
       this.setStatus('syncing', '正在上传…');
       try {
         const r = await pushRemote(this.data, s.sha);
@@ -255,6 +267,7 @@
           return;
         }
         s.sha = r.sha; s.lastSyncedAt = new Date().toISOString(); setSync(s);
+        this._lastSig = sig;
         this.dirty = false;
         this.setStatus('idle', '已同步 ' + new Date().toLocaleTimeString('zh-CN', { hour12: false }));
       } catch (e) {
@@ -283,6 +296,7 @@
         if (!this.dirty) {
           s.sha = remote.sha; s.lastSyncedAt = new Date().toISOString(); setSync(s);
           this.replaceAll(remote.data);
+          this._lastSig = contentSig(this.data);
           this.setStatus('idle', '已拉取最新数据 ' + new Date().toLocaleTimeString('zh-CN', { hour12: false }));
         } else {
           this.pendingRemote = remote;
