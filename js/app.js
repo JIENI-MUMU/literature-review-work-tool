@@ -188,10 +188,8 @@
 
   function renderList() {
     const st = listState;
-    const total = projPapers().length;
     app.innerHTML = `
       ${projHeader('list')}
-      <p class="sub">共 ${total} 篇，全文已读 ${readCount()} 篇。点一行打开笔记卡，<b>右键</b>可以删除。<b style="color:var(--red)">左边有红线的行</b>=还没读完全文，不能引用。</p>
       <div class="list-tools">
         <div class="lt-cell">
           <label class="btn primary-label" style="margin:0">＋ 从 PDF 新增<input type="file" id="pdfFiles" accept=".pdf,application/pdf" multiple hidden></label>
@@ -1040,7 +1038,11 @@ ${head || '（见附件）'}
   const PROJECT_PAGES = ['list', 'questions', 'paper'];
   function projHeader(active) {
     const tab = (k, name) => `<a href="#/${k}" class="${k === active ? 'on' : ''}">${name}</a>`;
-    return `<div class="proj-head"><h1>${esc(P().name)}</h1>
+    // 项目名右边一个小框：篇数和已读数；“?”悬停看操作提示
+    const n = projPapers().length, r = readCount();
+    const tip = '点一行打开笔记卡；右键可以删除；左边有红线的行 = 还没读完全文，不能引用';
+    return `<div class="proj-head"><div class="ph-top"><h1>${esc(P().name)}</h1>
+      <span class="stat-box" title="${tip}">${n} 篇 · 已读 ${r}<span class="stat-q">?</span></span></div>
       <nav class="proj-tabs">${tab('list', '文献列表')}${tab('questions', '研究问题')}</nav></div>`;
   }
   function drawSidebar(page) {

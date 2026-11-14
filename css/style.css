@@ -359,3 +359,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 @media (max-width: 720px) { .col-grip { display: none; } .list table.zt { table-layout: auto; } .list table.zt .t-title { white-space: normal; } }
 .list table.zt .tag { white-space: nowrap; }
 #btnSort { margin-right: 6px; }
+/* 项目名右边的小统计框 */
+.ph-top { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.ph-top h1 { margin: 0; }
+.stat-box { font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; white-space: nowrap; cursor: default; display: inline-flex; align-items: center; gap: 6px; }
+.stat-q { display: inline-block; width: 14px; height: 14px; line-height: 13px; text-align: center; border: 1px solid var(--line); border-radius: 50%; font-size: 10px; }
+.stat-box:hover { color: var(--ink); border-color: #c9c6bc; }
