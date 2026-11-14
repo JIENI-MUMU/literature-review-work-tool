@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>文献综述笔记</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">文献综述笔记</div>
+    <nav class="nav">
+      <a href="#/list" data-route="list">文献列表</a>
+      <a href="#/questions" data-route="questions">我关心的问题</a>
+      <a href="#/review" data-route="review">横向复盘</a>
+      <a href="#/guide" data-route="guide">使用说明</a>
+      <a href="#/settings" data-route="settings">设置</a>
+    </nav>
+    <div id="syncBadge" class="sync-badge" title="同步状态"></div>
+  </header>
+
+  <div id="banner"></div>
+  <main id="app"></main>
+
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <button class="modal-close" aria-label="关闭">×</button>
+      <div class="modal-body"></div>
+    </div>
+  </div>
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="vendor/xlsx.full.min.js"></script>
+  <script src="js/hints.js"></script>
+  <script src="js/guide.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
