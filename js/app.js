@@ -89,10 +89,17 @@
       const n = readCount() - (P().lastReviewReadCount || 0);
       if (n >= 5 && !location.hash.startsWith('#/review')) {
         html = `<div class="banner"><span>你又读完了 ${n} 篇。该做一次横向复盘了：哪些一致、哪些矛盾、什么没人研究。</span><a class="btn small" href="#/review">去复盘</a></div>`;
-      } else if (!S.getSync() && D().papers.length > 0) {
+      } else if (D().papers.length > 0) {
+        // 备份提醒：没开同步每 7 天，开了同步每 30 天；点一下就下载，不用去设置页
         let last = null; try { last = localStorage.getItem('litreview.lastBackup'); } catch (e) {}
-        const old = !last || (Date.now() - new Date(last).getTime()) > 7 * 864e5;
-        if (old) html = `<div class="banner"><span>数据只存在这台设备的浏览器里，清缓存会丢失。建议开启同步，或导出备份。</span><a class="btn small" href="#/settings">去设置</a></div>`;
+        const days = last ? Math.floor((Date.now() - new Date(last).getTime()) / 864e5) : null;
+        const limit = S.getSync() ? 30 : 7;
+        let snooze = 0; try { snooze = +localStorage.getItem('litreview.backupSnooze') || 0; } catch (e) {}
+        if ((days === null || days >= limit) && Date.now() > snooze) {
+          const why = S.getSync() ? '笔记已经同步到 GitHub，再在电脑上存一份，以防万一。' : '数据只存在这台设备的浏览器里，清缓存会丢失。';
+          html = `<div class="banner"><span>${days === null ? '还没下载过备份。' : `上次下载备份是 ${days} 天前。`}${why}</span>
+            <span><button class="small primary" data-act="backup">立刻下载备份</button> <button class="small" data-act="snooze">过几天再说</button></span></div>`;
+        }
       }
     }
     el.innerHTML = html;
@@ -101,6 +108,8 @@
     const a = e.target.closest('[data-act]'); if (!a) return;
     if (a.dataset.act === 'use-remote') await S.resolveConflict('remote');
     if (a.dataset.act === 'use-local') await S.resolveConflict('local');
+    if (a.dataset.act === 'backup') { exportJson(); toast('备份已下载。存到电脑或网盘的固定文件夹里'); }
+    if (a.dataset.act === 'snooze') { try { localStorage.setItem('litreview.backupSnooze', String(Date.now() + 3 * 864e5)); } catch (e) {} updateBanner(); }
   });
 
   S.onChange(() => {
@@ -1156,7 +1165,7 @@ ${head || '（见附件）'}
             <td><div class="t-title">${esc(p.title || '（未填标题）')}</div>${p.titleZh ? `<div class="t-zh">${esc(p.titleZh)}</div>` : ''}</td>
             <td>${esc(p.year)}</td>
             <td class="td-au" title="${esc(p.authors)}">${esc(shortAuthors(p.authors))}</td>
-            <td>${pjs.length ? pjs.map((pj) => `<span class="tag ${pj.id === cur.id ? '' : 'other'}">${esc(pj.name)}</span>`).join('') : '<span class="empty-sum">不在任何项目里</span>'}</td>
+            <td class="td-projs">${pjs.length ? pjs.map((pj) => `<div class="pj-line" title="${esc(pj.name)}">${esc(pj.name)}</div>`).join('') : '<span class="empty-sum">不在任何项目里</span>'}</td>
             <td class="td-act"><button type="button" class="small" data-join="${p.id}">加入项目 ▾</button></td>
           </tr>`;
         }).join('')}</tbody></table>`;

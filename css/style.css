@@ -336,3 +336,8 @@ table.cmp tbody tr:last-child td { border-bottom: none; }
 .save-st.ok { color: #2e7d4f; }
 .save-st.bad { color: var(--red); }
 @media (max-width: 720px) { .sec-top { flex-wrap: wrap; } .save-st { white-space: normal; } }
+/* 文献库：所在项目用普通文字，一行一个，太长省略 */
+.td-projs { font-size: 13px; color: var(--muted); max-width: 200px; }
+.pj-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.banner > span:last-child { white-space: nowrap; }
+@media (max-width: 720px) { .banner { flex-wrap: wrap; } }
