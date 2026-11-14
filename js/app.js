@@ -111,7 +111,7 @@
         <span><a class="btn small" href="#/guide" data-act="tokguide">怎么换令牌</a> <a class="btn small" href="#/settings">去设置</a></span></div>`;
     } else {
       const n = readCount() - (P().lastReviewReadCount || 0);
-      if (n >= 5 && !location.hash.startsWith('#/review')) {
+      if (FEATURE_REVIEW && n >= 5 && !location.hash.startsWith('#/review')) {
         html = `<div class="banner"><span>你又读完了 ${n} 篇。该做一次横向复盘了：哪些一致、哪些矛盾、什么没人研究。</span><a class="btn small" href="#/review">去复盘</a></div>`;
       } else if (D().papers.length > 0) {
         // 备份提醒：没开同步每 7 天，开了同步每 30 天；点一下就下载，不用去设置页
@@ -157,7 +157,7 @@
     document.body.classList.remove('sb-open');
     if (page === 'paper' && id) renderCard(id);
     else if (page === 'questions') renderQuestions();
-    else if (page === 'review') renderReview();
+    else if (page === 'review' && FEATURE_REVIEW) renderReview();
     else if (page === 'guide') renderGuide();
     else if (page === 'settings') renderSettings();
     else if (page === 'library') renderLibrary();
@@ -1091,11 +1091,13 @@ ${head || '（见附件）'}
   // =====================================================
   // 左边栏：项目列表 + 文献库 / 使用说明 / 设置
   // =====================================================
+  // 横向复盘页暂时隐藏（2026-11-14 用户要求）。代码和数据都保留，改成 true 就恢复。
+  const FEATURE_REVIEW = false;
   const PROJECT_PAGES = ['list', 'questions', 'review', 'paper'];
   function projHeader(active) {
     const tab = (k, name) => `<a href="#/${k}" class="${k === active ? 'on' : ''}">${name}</a>`;
     return `<div class="proj-head"><h1>${esc(P().name)}</h1>
-      <nav class="proj-tabs">${tab('list', '文献列表')}${tab('questions', '我关心的问题')}${tab('review', '横向复盘')}</nav></div>`;
+      <nav class="proj-tabs">${tab('list', '文献列表')}${tab('questions', '我关心的问题')}${FEATURE_REVIEW ? tab('review', '横向复盘') : ''}</nav></div>`;
   }
   function drawSidebar(page) {
     page = page || (location.hash || '#/list').split('/')[1] || 'list';
