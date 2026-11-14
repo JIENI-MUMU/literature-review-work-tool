@@ -110,10 +110,7 @@
       html = `<div class="banner ${n < 0 ? 'red' : ''}"><span>${n < 0 ? `⚠ <b>同步令牌已经过期</b>（${day}），笔记没法上传到 GitHub 了。` : `同步令牌还有 <b>${n} 天</b>到期（${day}）。到期后笔记就没法上传到 GitHub。`}换一个新令牌只要两分钟，数据不会丢。</span>
         <span><a class="btn small" href="#/guide" data-act="tokguide">怎么换令牌</a> <a class="btn small" href="#/settings">去设置</a></span></div>`;
     } else {
-      const n = readCount() - (P().lastReviewReadCount || 0);
-      if (FEATURE_REVIEW && n >= 5 && !location.hash.startsWith('#/review')) {
-        html = `<div class="banner"><span>你又读完了 ${n} 篇。该做一次横向复盘了：哪些一致、哪些矛盾、什么没人研究。</span><a class="btn small" href="#/review">去复盘</a></div>`;
-      } else if (D().papers.length > 0) {
+      if (D().papers.length > 0) {
         // 备份提醒：没开同步每 7 天，开了同步每 30 天；点一下就下载，不用去设置页
         let last = null; try { last = localStorage.getItem('litreview.lastBackup'); } catch (e) {}
         const days = last ? Math.floor((Date.now() - new Date(last).getTime()) / 864e5) : null;
@@ -148,9 +145,8 @@
   });
 
   // ---------- 路由 ----------
-  // 文献列表的筛选和排序一行暂时去掉（2026-11-14 用户觉得没用），改成 true 就恢复
-  const FEATURE_LIST_FILTERS = false;
-  const listState = { q: '', filter: 'all', unread: false, unsure: false, sort: 'updated' };
+  // 排序和筛选做在表头上：点“年份”“作者”“标题”排序，点“全文已读”切换只看未读/已读
+  const listState = { q: '', sort: 'updated', read: 'all' };
 
   function route() {
     const h = location.hash || '#/list';
@@ -159,7 +155,6 @@
     document.body.classList.remove('sb-open');
     if (page === 'paper' && id) renderCard(id);
     else if (page === 'questions') renderQuestions();
-    else if (page === 'review' && FEATURE_REVIEW) renderReview();
     else if (page === 'guide') renderGuide();
     else if (page === 'settings') renderSettings();
     else if (page === 'library') renderLibrary();
@@ -179,24 +174,23 @@
       const q = st.q.toLowerCase();
       ps = ps.filter((p) => [p.title, p.titleZh, p.authors, p.journal, p.summary, p.year].join(' ').toLowerCase().includes(q));
     }
-    if (st.filter === 'none') ps = ps.filter((p) => !(p.questionIds || []).length);
-    else if (st.filter !== 'all') ps = ps.filter((p) => (p.questionIds || []).includes(st.filter));
-    if (st.unread) ps = ps.filter((p) => !p.fullRead);
-    if (st.unsure) ps = ps.filter((p) => p.bEvidenceConfidence === 'unsure');
-    if (st.sort === 'year') ps.sort((a, b) => String(b.year || '').localeCompare(String(a.year || '')));
-    else if (st.sort === 'title') ps.sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));
+    if (st.read === 'unread') ps = ps.filter((p) => !p.fullRead);
+    else if (st.read === 'read') ps = ps.filter((p) => p.fullRead);
+    const by = (f) => (a, b) => String(f(a) || '').localeCompare(String(f(b) || ''));
+    if (st.sort === 'yearDesc') ps.sort((a, b) => by((x) => x.year)(b, a));
+    else if (st.sort === 'yearAsc') ps.sort(by((x) => x.year));
+    else if (st.sort === 'author') ps.sort(by((x) => x.authors));
+    else if (st.sort === 'title') ps.sort(by((x) => x.title));
     else ps.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
     return ps;
   }
 
   function renderList() {
     const st = listState;
-    const qs = P().questions;
-    const opts = [['all', '全部问题']].concat(qs.map((q) => [q.id, q.code + '：' + q.text.slice(0, 24)]), [['unsure', '暂不确定'], ['none', '未归类']]);
     const total = projPapers().length;
     app.innerHTML = `
       ${projHeader('list')}
-      <p class="sub">共 ${total} 篇，全文已读 ${readCount()} 篇。点一行打开笔记卡，<b>右键</b>可以移除。<b style="color:var(--red)">左边有红线的行</b>=还没读完全文，不能引用。</p>
+      <p class="sub">共 ${total} 篇，全文已读 ${readCount()} 篇。点一行打开笔记卡，<b>右键</b>可以移除，<b>点表头</b>可以排序、筛选已读未读。<b style="color:var(--red)">左边有红线的行</b>=还没读完全文，不能引用。</p>
       <div class="list-tools">
         <div class="lt-cell">
           <label class="btn primary-label" style="margin:0">＋ 从 PDF 新增<input type="file" id="pdfFiles" accept=".pdf,application/pdf" multiple hidden></label>
@@ -205,20 +199,10 @@
           <label class="btn" style="margin:0">导入 Zotero CSV<input type="file" id="zoteroFile" accept=".csv,text/csv" hidden></label>
         </div>
         <div class="lt-cell"><input type="search" id="q" placeholder="搜索标题、作者、总结…" value="${esc(st.q)}"></div>
-        <div class="lt-cell">${FEATURE_LIST_FILTERS ? `
-          <select id="filter">${opts.map(([v, t]) => `<option value="${esc(v)}" ${st.filter === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
-          <select id="sort">
-            <option value="updated" ${st.sort === 'updated' ? 'selected' : ''}>最近修改</option>
-            <option value="year" ${st.sort === 'year' ? 'selected' : ''}>年份</option>
-            <option value="title" ${st.sort === 'title' ? 'selected' : ''}>标题</option>
-          </select>` : ''}
-        </div>
+        <div class="lt-cell"></div>
         <div class="lt-cell"><div class="dropzone compact" id="dropZone" title="PDF 只在你电脑上读取，不会上传，也不会保存。">把 PDF 拖到这里，自动填好信息（可多篇）</div></div>
       </div>
-      ${FEATURE_LIST_FILTERS ? `<div class="toolbar">
-        <label class="chk"><input type="checkbox" id="fUnread" ${st.unread ? 'checked' : ''}> 只看未读全文</label>
-        <label class="chk"><input type="checkbox" id="fUnsure" ${st.unsure ? 'checked' : ''}> 只看“局限不确定”的（待批改）</label>
-      </div>` : ''}
+
       <div class="list" id="listBox"></div>`;
     drawRows();
     app.querySelector('#pdfFiles').onchange = (e) => { addFromPdfs(e.target.files); e.target.value = ''; };
@@ -228,22 +212,40 @@
     app.querySelector('#btnNew').onclick = newPaper;
     app.querySelector('#zoteroFile').onchange = (e) => importZotero(e.target.files[0]);
     app.querySelector('#q').oninput = (e) => { st.q = e.target.value; drawRows(); };
-    if (FEATURE_LIST_FILTERS) app.querySelector('#filter').onchange = (e) => { st.filter = e.target.value; drawRows(); };
-    if (FEATURE_LIST_FILTERS) app.querySelector('#sort').onchange = (e) => { st.sort = e.target.value; drawRows(); };
-    if (FEATURE_LIST_FILTERS) app.querySelector('#fUnread').onchange = (e) => { st.unread = e.target.checked; drawRows(); };
-    if (FEATURE_LIST_FILTERS) app.querySelector('#fUnsure').onchange = (e) => { st.unsure = e.target.checked; drawRows(); };
+  }
+
+  function sortHead() {
+    const st = listState;
+    const arrow = (k) => ({ yearDesc: ' ↓', yearAsc: ' ↑' }[st.sort] && k === 'year' ? { yearDesc: ' ↓ 新→旧', yearAsc: ' ↑ 旧→新' }[st.sort] : (st.sort === k ? ' ↓' : ''));
+    const readLbl = { all: '', unread: '：只看未读', read: '：只看已读' }[st.read];
+    const th = (cls, key, name, extra) => `<th class="${cls} th-sort ${extra ? 'on' : ''}" data-sort="${key}" title="点一下排序或筛选">${name}</th>`;
+    return th('', 'title', '标题' + arrow('title'), st.sort === 'title') +
+      th('col-year', 'year', '年份' + arrow('year'), st.sort.startsWith('year')) +
+      th('col-au', 'author', '作者' + arrow('author'), st.sort === 'author') +
+      th('col-read', 'read', '全文已读' + readLbl, st.read !== 'all');
+  }
+  function onSortClick(k) {
+    const st = listState;
+    if (k === 'read') st.read = { all: 'unread', unread: 'read', read: 'all' }[st.read];
+    else if (k === 'year') st.sort = { yearDesc: 'yearAsc', yearAsc: 'updated' }[st.sort] || 'yearDesc';
+    else st.sort = st.sort === k ? 'updated' : k;
+    drawRows();
   }
 
   function drawRows() {
     const box = document.getElementById('listBox'); if (!box) return;
     const ps = filteredPapers();
     if (!projPapers().length) {
-      box.innerHTML = `<div class="empty">这个项目还没有文献。<br>先去“我关心的问题”写下几个工作问题，再把 PDF 拖进上面的虚线框。${D().papers.length ? '<br>文献库里已有的文章，点“从文献库添加”。' : ''}</div>`;
+      box.innerHTML = `<div class="empty">这个项目还没有文献。<br>先去“研究问题”写下几个工作问题，再把 PDF 拖进上面的虚线框。${D().papers.length ? '<br>文献库里已有的文章，点“从文献库添加”。' : ''}</div>`;
       return;
     }
-    if (!ps.length) { box.innerHTML = '<div class="empty">没有符合筛选条件的文献。</div>'; return; }
+    if (!ps.length) {
+      box.innerHTML = `<div class="empty">没有符合的文章。${listState.read !== 'all' ? '<br><button class="small" id="clrRead">显示全部</button>' : ''}</div>`;
+      const c = box.querySelector('#clrRead'); if (c) c.onclick = () => { listState.read = 'all'; drawRows(); };
+      return;
+    }
     box.innerHTML = `<table>
-      <thead><tr><th>标题</th><th class="col-year">年份</th><th class="col-au">作者</th><th class="col-read">全文已读</th><th class="col-del"></th></tr></thead>
+      <thead><tr>${sortHead()}<th class="col-del"></th></tr></thead>
       <tbody>${ps.map((p) => `
         <tr class="${p.fullRead ? '' : 'unread'}" data-id="${p.id}">
           <td><div class="t-title">${esc(p.title || '（未填标题）')}</div>${p.titleZh ? `<div class="t-zh">${esc(p.titleZh)}</div>` : ''}${p.summary ? `<div class="t-sum">→ ${esc(p.summary)}</div>` : ''}${p.bEvidenceConfidence === 'unsure' ? '<span class="tag unsure">局限待批改</span>' : ''}</td>
@@ -253,6 +255,7 @@
           <td class="td-del"><button type="button" class="del-btn" data-del="${p.id}" title="从这个项目移除">移除</button></td>
         </tr>`).join('')}</tbody></table>`;
     box.querySelectorAll('tbody tr').forEach((tr) => { tr.onclick = () => { location.hash = '#/paper/' + tr.dataset.id; }; });
+    box.querySelectorAll('[data-sort]').forEach((th) => { th.onclick = () => onSortClick(th.dataset.sort); });
     // 手机上没有右键，保留一个删除按钮（电脑上隐藏）
     box.querySelectorAll('[data-del]').forEach((b) => {
       b.onclick = (e) => { e.stopPropagation(); removeFromProject(b.dataset.del); };
@@ -408,7 +411,7 @@
             <label><input type="checkbox" data-q="unsure" ${(p.questionIds || []).includes('unsure') ? 'checked' : ''}> 暂不确定</label>
             <span class="proj-tag">只属于项目「${esc(P().name)}」</span>
           </div>
-          ${qs.length ? '' : '<div class="meta-line">还没有问题。先去 <a href="#/questions">我关心的问题</a> 写几条。</div>'}
+          ${qs.length ? '' : '<div class="meta-line">还没有问题。先去 <a href="#/questions">研究问题</a> 写几条。</div>'}
         </div>
       </section>
 
@@ -862,7 +865,7 @@ ${head || '（见附件）'}
   }
 
   // =====================================================
-  // 我关心的问题
+  // 研究问题
   // =====================================================
   function renderQuestions() {
     const d = P();
@@ -929,177 +932,14 @@ ${head || '（见附件）'}
   // =====================================================
   // 横向复盘
   // =====================================================
-  // 对比表可选的列（都是笔记卡里的格子）
-  const CMP_COLS = [
-    ['mType', '研究类型'], ['mSubjects', '研究对象'], ['mSample', '样本量'], ['mSource', '数据来源'],
-    ['mWhenWhere', '时间和地点'], ['mMeasure', '怎么测的'], ['rResults', '研究结果'], ['dConclusion', '作者的结论'],
-    ['aAuthorLimits', '作者自认局限'], ['bEvidence', '证据够不够'], ['bApply', '能不能搬过来'], ['bCompare', '和其他文献比'],
-    ['bGap', '留下的空白'], ['summary', '一句话总结'],
-  ];
-  const CMP_DEFAULT = ['mType', 'mSource', 'mWhenWhere', 'bGap'];
-  const lsGet = (k, dflt) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : dflt; } catch (e) { return dflt; } };
-  const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
-
-  // 文献简称：第一作者姓 + 年份，例：Barbier 等 2021
-  function shortCite(p) {
-    const list = String(p.authors || '').split(';').map((x) => x.trim()).filter(Boolean);
-    const fam = list.length ? list[0].split(/\s+/)[0] : (p.title || '无标题').slice(0, 12);
-    return `${fam}${list.length > 1 ? ' 等' : ''} ${p.year || ''}`.trim();
-  }
-
-  function renderReview() {
-    const d = P();
-    const rc = readCount();
-    const since = rc - (d.lastReviewReadCount || 0);
-    const st = lsGet('litreview.reviewView', {});
-    let cols = Array.isArray(st.cols) && st.cols.length ? st.cols : CMP_DEFAULT.slice();
-    let qf = st.q && (st.q === 'all' || st.q === 'unsure' || st.q === 'none' || d.questions.some((q) => q.id === st.q)) ? st.q : 'all';
-    let withUnread = !!st.unread;
-    const draftKey = 'litreview.reviewDraft.' + d.id;
-    const draft = lsGet(draftKey, { consistent: '', conflict: '', missing: '', paperIds: [] });
-    const saveView = () => lsSet('litreview.reviewView', { cols, q: qf, unread: withUnread });
-
-    const qOpts = [['all', '全部问题']].concat(d.questions.map((q) => [q.id, q.code + '：' + (q.text.length > 26 ? q.text.slice(0, 26) + '…' : q.text)]), [['unsure', '暂不确定'], ['none', '未归类']]);
-
-    app.innerHTML = `
-      ${projHeader('review')}
-      <p class="sub">每读完 5 篇做一次：先在对比表里横着看，再写三句话。几轮下来，“没人研究过”那一栏会长成你综述的论断。<br>目前全文已读 <b>${rc}</b> 篇，上次复盘后新读了 <b>${since}</b> 篇。</p>
-
-      <section class="panel">
-        <h2>对比表</h2>
-        <div class="cmp-tools">
-          <label class="meta-line">看哪个问题</label>
-          <select id="cmpQ">${qOpts.map(([v, t]) => `<option value="${esc(v)}" ${v === qf ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
-          <label class="chk"><input type="checkbox" id="cmpUnread" ${withUnread ? 'checked' : ''}> 也显示未读完全文的</label>
-        </div>
-        <div class="cmp-cols"><span class="meta-line">比较哪些格子：</span>${CMP_COLS.map(([k, n]) => `<label class="chip ${cols.includes(k) ? 'on' : ''}"><input type="checkbox" data-col="${k}" ${cols.includes(k) ? 'checked' : ''}>${n}</label>`).join('')}</div>
-        <p class="meta-line" style="margin:4px 0 8px">看什么：同一列里大家是不是用的同一种方法、同一种数据、同一个地方？方法一样的“一致”分量不大；“留下的空白”里重复出现的，就是缺口。</p>
-        <div class="cmp-wrap" id="cmpBox"></div>
-      </section>
-
-      <section class="panel">
-        <h2>写这一轮的复盘</h2>
-        <div class="cite-bar"><span class="meta-line">点文献名插进文字里：</span><span id="citeChips"></span></div>
-        <div class="field">${label('reviewConsistent')}<textarea id="rv1" rows="3" data-k="consistent" placeholder="${esc(H.reviewConsistent.placeholder)}">${esc(draft.consistent)}</textarea></div>
-        <div class="field">${label('reviewConflict')}<textarea id="rv2" rows="3" data-k="conflict" placeholder="${esc(H.reviewConflict.placeholder)}">${esc(draft.conflict)}</textarea></div>
-        <div class="field">${label('reviewMissing')}<textarea id="rv3" rows="3" data-k="missing" placeholder="${esc(H.reviewMissing.placeholder)}">${esc(draft.missing)}</textarea></div>
-        <button class="primary" id="saveRv">保存这次复盘</button> <span class="meta-line">没写完也不会丢，草稿自动保存在这台设备上。</span>
-      </section>
-
-      <h2>历次复盘</h2>
-      <section class="panel" id="rvList"></section>`;
-
-    const papersNow = () => projPapers()
-      .filter((p) => withUnread || p.fullRead)
-      .filter((p) => {
-        const ids = p.questionIds || [];
-        if (qf === 'all') return true;
-        if (qf === 'none') return !ids.length;
-        return ids.includes(qf);
-      })
-      .sort((a, b) => String(a.year || '').localeCompare(String(b.year || '')));
-
-    // ---- 对比表 ----
-    const drawTable = () => {
-      const ps = papersNow();
-      const box = app.querySelector('#cmpBox');
-      if (!ps.length) { box.innerHTML = `<div class="meta-line" style="padding:12px 0">这个问题下还没有${withUnread ? '' : '读完全文的'}文献。</div>`; drawChips(ps); return; }
-      const use = CMP_COLS.filter(([k]) => cols.includes(k));
-      box.innerHTML = `<table class="cmp">
-        <thead><tr><th class="cmp-first">文献</th>${use.map(([, n]) => `<th>${n}</th>`).join('')}</tr></thead>
-        <tbody>${ps.map((p) => `<tr data-id="${p.id}" class="${p.fullRead ? '' : 'unread'}">
-          <td class="cmp-first"><div class="t-title">${esc(shortCite(p))}</div><div class="t-zh">${esc(p.titleZh || p.title || '')}</div></td>
-          ${use.map(([k]) => `<td>${String(p[k] || '').trim() ? esc(p[k]) : '<span class="empty-sum">—</span>'}</td>`).join('')}
-        </tr>`).join('')}</tbody></table>`;
-      box.querySelectorAll('tbody tr').forEach((tr) => { tr.onclick = () => { location.hash = '#/paper/' + tr.dataset.id; }; });
-      drawChips(ps);
-    };
-
-    // ---- 点名文献 ----
-    let lastTa = app.querySelector('#rv1');
-    const drawChips = (ps) => {
-      const bar = app.querySelector('#citeChips');
-      bar.innerHTML = ps.length ? ps.map((p) => `<button type="button" class="chip" data-cite="${p.id}" title="${esc(p.title || '')}">${esc(shortCite(p))}</button>`).join('') : '<span class="meta-line">（对比表里没有文献）</span>';
-      bar.querySelectorAll('[data-cite]').forEach((b) => {
-        b.onmousedown = (e) => e.preventDefault(); // 不让文本框失去光标位置
-        b.onclick = () => {
-          const p = ps.find((x) => x.id === b.dataset.cite); if (!p) return;
-          const ta = lastTa; const txt = shortCite(p);
-          const st0 = ta.selectionStart ?? ta.value.length, en = ta.selectionEnd ?? ta.value.length;
-          const before = ta.value.slice(0, st0), after = ta.value.slice(en);
-          // 前面已经是空格或标点就不加“、”
-          const sep = before && !/[\s、，,。.：:；;（(“"'‘]$/.test(before) ? '、' : '';
-          ta.value = before + sep + txt + after;
-          const pos = (before + sep + txt).length;
-          ta.focus(); ta.setSelectionRange(pos, pos);
-          if (!draft.paperIds.includes(p.id)) draft.paperIds.push(p.id);
-          saveDraft();
-        };
-      });
-    };
-    const saveDraft = () => {
-      app.querySelectorAll('#rv1,#rv2,#rv3').forEach((ta) => { draft[ta.dataset.k] = ta.value; });
-      lsSet(draftKey, draft);
-    };
-    app.querySelectorAll('#rv1,#rv2,#rv3').forEach((ta) => {
-      ta.addEventListener('focus', () => { lastTa = ta; });
-      ta.addEventListener('input', saveDraft);
-    });
-
-    app.querySelector('#cmpQ').onchange = (e) => { qf = e.target.value; saveView(); drawTable(); };
-    app.querySelector('#cmpUnread').onchange = (e) => { withUnread = e.target.checked; saveView(); drawTable(); };
-    app.querySelectorAll('[data-col]').forEach((c) => {
-      c.onchange = () => {
-        cols = CMP_COLS.map(([k]) => k).filter((k) => (k === c.dataset.col ? c.checked : cols.includes(k)));
-        c.parentElement.classList.toggle('on', c.checked);
-        saveView(); drawTable();
-      };
-    });
-    drawTable();
-
-    app.querySelector('#saveRv').onclick = () => {
-      saveDraft();
-      if (![draft.consistent, draft.conflict, draft.missing].some((x) => x.trim())) { toast('三栏都是空的'); return; }
-      const used = draft.paperIds.filter((id) => [draft.consistent, draft.conflict, draft.missing].join(' ').includes(shortCite(view(D().papers.find((p) => p.id === id) || {}))));
-      d.reviews.unshift({ id: uid(), date: new Date().toISOString(), paperCount: rc, questionId: qf,
-        consistent: draft.consistent.trim(), conflict: draft.conflict.trim(), missing: draft.missing.trim(), paperIds: used });
-      d.lastReviewReadCount = rc;
-      lsSet(draftKey, { consistent: '', conflict: '', missing: '', paperIds: [] });
-      S.save(); toast('已保存'); renderReview(); updateBanner();
-    };
-
-    // ---- 历次复盘 ----
-    const qName = (id) => (id === 'all' || !id ? '全部问题' : id === 'unsure' ? '暂不确定' : id === 'none' ? '未归类' : (d.questions.find((q) => q.id === id) || {}).code || '（已删除的问题）');
-    const box = app.querySelector('#rvList');
-    box.innerHTML = d.reviews.length ? d.reviews.map((r) => {
-      const refs = (r.paperIds || []).map((id) => D().papers.find((p) => p.id === id)).filter(Boolean);
-      return `<dl class="review-item">
-        <div><b>${esc(fmtDate(r.date))}</b> <span class="meta-line">（当时已读 ${r.paperCount} 篇 · ${esc(qName(r.questionId))}）</span>
-          <button class="small danger" data-rdel="${r.id}" style="float:right">删除</button></div>
-        <dt>一致的</dt><dd>${esc(r.consistent) || '—'}</dd>
-        <dt>矛盾的</dt><dd>${esc(r.conflict) || '—'}</dd>
-        <dt>没人研究的</dt><dd>${esc(r.missing) || '—'}</dd>
-        ${refs.length ? `<dt>提到的文献</dt><dd>${refs.map((p) => `<a href="#/paper/${p.id}" class="chip">${esc(shortCite(p))}</a>`).join(' ')}</dd>` : ''}
-      </dl>`;
-    }).join('') : '<div class="meta-line">还没有复盘记录。</div>';
-    box.querySelectorAll('[data-rdel]').forEach((b) => {
-      b.onclick = () => {
-        if (!confirm('删除这次复盘记录？')) return;
-        d.reviews = d.reviews.filter((r) => r.id !== b.dataset.rdel); S.save(); renderReview();
-      };
-    });
-  }
-
   // =====================================================
   // 左边栏：项目列表 + 文献库 / 使用说明 / 设置
   // =====================================================
-  // 横向复盘页暂时隐藏（2026-11-14 用户要求）。代码和数据都保留，改成 true 就恢复。
-  const FEATURE_REVIEW = false;
-  const PROJECT_PAGES = ['list', 'questions', 'review', 'paper'];
+  const PROJECT_PAGES = ['list', 'questions', 'paper'];
   function projHeader(active) {
     const tab = (k, name) => `<a href="#/${k}" class="${k === active ? 'on' : ''}">${name}</a>`;
     return `<div class="proj-head"><h1>${esc(P().name)}</h1>
-      <nav class="proj-tabs">${tab('list', '文献列表')}${tab('questions', '我关心的问题')}${FEATURE_REVIEW ? tab('review', '横向复盘') : ''}</nav></div>`;
+      <nav class="proj-tabs">${tab('list', '文献列表')}${tab('questions', '研究问题')}</nav></div>`;
   }
   function drawSidebar(page) {
     page = page || (location.hash || '#/list').split('/')[1] || 'list';
@@ -1118,7 +958,7 @@ ${head || '（见附件）'}
         if (e.target.closest('[data-pjmore]')) return;
         S.setCur(el.dataset.pj);
         const pg = (location.hash || '').split('/')[1];
-        if (['list', 'questions', 'review'].includes(pg)) route(); else location.hash = '#/list';
+        if (['list', 'questions'].includes(pg)) route(); else location.hash = '#/list';
       };
       el.addEventListener('contextmenu', (e) => { e.preventDefault(); showProjMenu(e.clientX, e.clientY, el.dataset.pj); });
     });
@@ -1370,8 +1210,7 @@ ${head || '（见附件）'}
     if (!window.XLSX) { toast('Excel 组件没有加载成功'); return; }
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rowsForExport()), '文献笔记');
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(P().questions.map((q) => ({ '编号': q.code, '问题': q.text }))), '我关心的问题');
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(P().reviews.map((r) => ({ '日期': fmtDate(r.date), '当时已读': r.paperCount, '一致的': r.consistent, '矛盾的': r.conflict, '没人研究的': r.missing }))), '横向复盘');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(P().questions.map((q) => ({ '编号': q.code, '问题': q.text }))), '研究问题');
     XLSX.writeFile(wb, `文献笔记_${P().name}_${today()}.xlsx`);
     markBackup();
   }

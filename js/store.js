@@ -5,7 +5,7 @@
  * {
  *   version: 2,
  *   papers: [ 文献库，每篇只记“原文事实”，所有项目共用（字段见下方 papers 说明，不含项目字段） ],
- *   projects: [{ id, name, createdAt, questions, questionHistory, reviews, lastReviewReadCount,
+ *   projects: [{ id, name, createdAt, questions, questionHistory,
  *                items: { 文献id: { questionIds, bEvidence, bEvidenceConfidence, bApply, bCompare, bProves, bGap, summary, addedAt } } }]
  * }
  * 当前项目 id 只存在本机：localStorage 'litreview.currentProject'（不同步）。
@@ -32,8 +32,6 @@
  *     quotes: [{ text, page }],
  *     summary
  *   }],
- *   reviews: [{ id, date, paperCount, consistent, conflict, missing }],
- *   lastReviewReadCount: 0     // 上次复盘时“全文已读”的篇数
  * }
  *
  * 本地：localStorage 'litreview.v1'
@@ -53,7 +51,7 @@
       id: 'pj' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       name: name || '我的第一个项目',
       createdAt: new Date().toISOString(),
-      questions: [], questionHistory: [], reviews: [], lastReviewReadCount: 0,
+      questions: [], questionHistory: [],
       items: {}, // 文献 id → { questionIds, bEvidence, ..., summary, addedAt }
     };
   }
@@ -87,14 +85,16 @@
       return p;
     });
     if (Array.isArray(d.projects) && d.projects.length) {
-      out.projects = d.projects.map((pj) => Object.assign(newProject(pj.name), pj, { items: pj.items || {} }));
+      out.projects = d.projects.map((pj) => {
+        const o = Object.assign(newProject(pj.name), pj, { items: pj.items || {} });
+        delete o.reviews; delete o.lastReviewReadCount; // 横向复盘已删除（用户要求），旧记录一起清掉
+        return o;
+      });
     } else {
       // 第 1 版数据（没有项目）：全部放进第一个项目
       const pj = newProject('我的第一个项目');
       pj.questions = d.questions || [];
       pj.questionHistory = d.questionHistory || [];
-      pj.reviews = d.reviews || [];
-      pj.lastReviewReadCount = d.lastReviewReadCount || 0;
       papers.forEach((p) => {
         const it = { addedAt: p.createdAt || out.updatedAt };
         PROJECT_FIELDS.forEach((k) => { if (p[k] !== undefined) it[k] = p[k]; });

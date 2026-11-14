@@ -134,10 +134,6 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent-soft
 .hist { font-size: 14px; }
 .hist details { border-top: 1px solid var(--line); padding: 8px 0; }
 .hist summary { cursor: pointer; color: var(--muted); }
-.review-item { border-top: 1px solid var(--line); padding: 14px 0; }
-.review-item:first-child { border-top: none; }
-.review-item dt { font-weight: 600; font-size: 13px; color: var(--muted); margin-top: 6px; }
-.review-item dd { margin: 2px 0 6px; white-space: pre-wrap; }
 .guide { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 28px 24px; }
 .guide table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 14px; }
 .guide th, .guide td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
@@ -307,37 +303,12 @@ textarea { min-height: 0; resize: none; overflow: hidden; }
   .main-col .banner { margin: 12px 16px 0; }
   .sb-more { visibility: visible; }
 }
-/* ===== 横向复盘：对比表 ===== */
-.cmp-tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
-.cmp-tools select { width: auto; max-width: 320px; }
-.cmp-cols { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 4px; }
-.chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; padding: 2px 9px; border: 1px solid var(--line); border-radius: 99px; background: #fff; color: var(--muted); cursor: pointer; text-decoration: none; }
-.chip input { display: none; }
-.chip.on { border-color: var(--ink); color: var(--ink); font-weight: 600; }
-.chip:hover { border-color: var(--ink); color: var(--ink); }
-.cmp-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
-table.cmp { border-collapse: separate; border-spacing: 0; min-width: 100%; font-size: 13px; }
-table.cmp th, table.cmp td { padding: 8px 10px; border-bottom: 1px solid var(--line); border-right: 1px solid #f0efea; vertical-align: top; text-align: left; min-width: 140px; max-width: 260px; white-space: pre-wrap; }
-table.cmp th { background: #fff; color: var(--muted); font-weight: 600; white-space: nowrap; position: sticky; top: 0; }
-table.cmp tbody tr { cursor: pointer; }
-table.cmp tbody tr:hover td { background: #fafafa; }
-table.cmp .cmp-first { position: sticky; left: 0; background: #fff; z-index: 1; min-width: 150px; box-shadow: 1px 0 0 var(--line); }
-table.cmp tr.unread .cmp-first { box-shadow: inset 3px 0 0 var(--red), 1px 0 0 var(--line); }
-table.cmp tbody tr:last-child td { border-bottom: none; }
-.cite-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; }
-.cite-bar .chip { color: var(--ink); }
-/* 使用说明、设置放到边栏底部，同步状态上面 */
-.sb-foot { display: flex; flex-direction: column; gap: 2px; padding: 12px 0 0; border-top: 1px solid var(--line); }
-.sb-foot .sync-badge { padding: 8px 8px 0; }
-/* 笔记卡每部分右上角的保存 */
-.sec-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.sec-save { display: flex; align-items: center; gap: 8px; }
-.save-st { font-size: 12px; color: var(--muted); white-space: nowrap; }
-.save-st.ok { color: #2e7d4f; }
-.save-st.bad { color: var(--red); }
-@media (max-width: 720px) { .sec-top { flex-wrap: wrap; } .save-st { white-space: normal; } }
 /* 文献库：所在项目用普通文字，一行一个，太长省略 */
 .td-projs { font-size: 13px; color: var(--muted); max-width: 200px; }
 .pj-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .banner > span:last-child { white-space: nowrap; }
 @media (max-width: 720px) { .banner { flex-wrap: wrap; } }
+/* 列表表头可点：排序 / 筛选已读未读 */
+.th-sort { cursor: pointer; user-select: none; }
+.th-sort:hover { color: var(--ink); }
+.th-sort.on { color: var(--ink); }
