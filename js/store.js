@@ -5,7 +5,7 @@
  * {
  *   version: 2,
  *   papers: [ 文献库，每篇只记“原文事实”，所有项目共用（字段见下方 papers 说明，不含项目字段） ],
- *   projects: [{ id, name, createdAt, questions, questionHistory,
+ *   projects: [{ id, name, createdAt, keywords, questions, questionHistory,
  *                items: { 文献id: { questionIds, bEvidence, bEvidenceConfidence, bApply, bCompare, bProves, bGap, summary, addedAt } } }]
  * }
  * 当前项目 id 只存在本机：localStorage 'litreview.currentProject'（不同步）。
@@ -51,7 +51,7 @@
       id: 'pj' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       name: name || '我的第一个项目',
       createdAt: new Date().toISOString(),
-      questions: [], questionHistory: [],
+      keywords: [], questions: [], questionHistory: [],
       items: {}, // 文献 id → { questionIds, bEvidence, ..., summary, addedAt }
     };
   }

@@ -373,3 +373,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 .q-block .q-item { margin-bottom: 6px; }
 .q-note { display: block; width: calc(100% - 52px); margin-left: 52px; min-height: 0; resize: none; overflow: hidden; font-size: 13px; color: #3a3e44; }
 @media (max-width: 720px) { .q-note { width: 100%; margin-left: 0; } }
+/* 关键词标签输入 */
+.kw-box { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; cursor: text; }
+.kw-box:focus-within { border-color: var(--ink); }
+.kw { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; padding: 2px 4px 2px 10px; border: 1px solid var(--line); border-radius: 99px; background: #fff; }
+.kw button { border: none; background: none; padding: 0 4px; color: var(--muted); font-size: 14px; line-height: 1; cursor: pointer; }
+.kw button:hover { color: var(--red); }
+.kw-box input { flex: 1; min-width: 160px; border: none !important; outline: none !important; padding: 4px 2px; }

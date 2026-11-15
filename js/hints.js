@@ -160,6 +160,10 @@ window.HINTS = {
   },
 
   // ================= 其他页面 =================
+  keywords: {
+    label: '关键词',
+    help: '这个项目检索文献时要用的主要关键词。\n建议中英文都写，再加上同义词：同一个概念，不同文章、不同国家的叫法不一样，只用一个词会漏掉很多文献。\n例：带量采购 / volume-based procurement / tendering / public procurement\n读文献时看到新的说法，随时加进来。',
+  },
   questionNote: {
     placeholder: '解释（可不填）：关键词指什么？为什么关心？范围到哪里？例：“质量”指什么，用什么能看出来变差了',
   },

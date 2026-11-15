@@ -148,9 +148,17 @@
   // 排序和筛选做在表头上：点“年份”“作者”“标题”排序，点“全文已读”切换只看未读/已读
   const listState = { q: '', sort: 'updated', read: 'all', years: [] }; // years 为空 = 全部年份
 
+  // 研究问题页有没保存的修改时，离开前先问一下
+  let qDirty = false, skipRoute = false, lastPage = '';
   function route() {
     const h = location.hash || '#/list';
     const [, page, id] = h.split('/');
+    if (skipRoute) { skipRoute = false; return; }
+    if (qDirty && lastPage === 'questions' && page !== 'questions') {
+      if (!confirm('关键词或研究问题还有没保存的修改，离开的话这些修改会丢掉。确定离开？')) { skipRoute = true; location.hash = '#/questions'; return; }
+      qDirty = false;
+    }
+    lastPage = page || 'list';
     drawSidebar(page);
     document.body.classList.remove('sb-open');
     if (page === 'paper' && id) renderCard(id);
@@ -972,10 +980,16 @@ ${head || '（见附件）'}
   function renderQuestions() {
     const d = P();
     let draft = d.questions.map((q) => Object.assign({}, q));
+    if (!Array.isArray(d.keywords)) d.keywords = [];
+    let kwDraft = d.keywords.slice();
     app.innerHTML = `
       ${projHeader('questions')}
-      <p class="sub">这是“工作问题”，用来帮你筛选读什么，不是最终的研究问题。读着读着一定会改，改了说明你读进去了。每次保存，旧版本自动存进下面的历史。 ${helpBtn('question')}</p>
+      <p class="sub">关键词和研究问题都是“工作版本”，读着读着一定会改，改了说明你读进去了。改完点下面的“保存修改”，旧版本自动存进修改历史。</p>
       <section class="panel">
+        <h2 style="margin-bottom:4px">关键词 ${helpBtn('keywords')}</h2>
+        <p class="meta-line" style="margin:0 0 10px">这个项目检索文献时用的主要关键词。输入后按回车添加，点 × 删除。</p>
+        <div class="kw-box" id="kwBox"></div>
+        <h2 style="margin:22px 0 10px">研究问题 ${helpBtn('question')}</h2>
         <div id="qList"></div>
         <button type="button" class="small" id="addQ">＋ 加一个问题</button>
         <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
@@ -1016,14 +1030,41 @@ ${head || '（见附件）'}
         };
       });
     };
-    const msg = (t) => { app.querySelector('#qMsg').textContent = t; };
+    qDirty = false;
+    const msg = (t) => { qDirty = t === '有未保存的修改'; app.querySelector('#qMsg').textContent = t; };
     draw();
+
+    // 关键词：和研究问题一起，点“保存修改”才保存，旧版本进修改历史
+    const drawKw = () => {
+      const box = app.querySelector('#kwBox');
+      box.innerHTML = kwDraft.map((k, i) => `<span class="kw">${esc(k)}<button type="button" data-kdel="${i}" title="删除">×</button></span>`).join('') +
+        '<input type="text" id="kwIn" placeholder="输入关键词，按回车" autocomplete="off">';
+      box.querySelectorAll('[data-kdel]').forEach((b) => { b.onclick = () => { kwDraft.splice(+b.dataset.kdel, 1); msg('有未保存的修改'); drawKw(); app.querySelector('#kwIn').focus(); }; });
+      const inp = box.querySelector('#kwIn');
+      inp.onkeydown = (e) => {
+        if (e.key === 'Enter' || e.key === ',' || e.key === '，') {
+          e.preventDefault();
+          const parts = inp.value.split(/[,，;；]/).map((x) => x.trim()).filter(Boolean);
+          let added = 0;
+          parts.forEach((v) => { if (!kwDraft.some((k) => k.toLowerCase() === v.toLowerCase())) { kwDraft.push(v); added++; } });
+          if (added) { msg('有未保存的修改'); drawKw(); app.querySelector('#kwIn').focus(); } else inp.value = '';
+        } else if (e.key === 'Backspace' && !inp.value && kwDraft.length) {
+          kwDraft.pop(); msg('有未保存的修改'); drawKw(); app.querySelector('#kwIn').focus();
+        }
+      };
+    };
+    drawKw();
+    app.querySelector('#kwBox').onclick = (e) => { if (e.target.id === 'kwBox') app.querySelector('#kwIn').focus(); };
     app.querySelector('#addQ').onclick = () => { draft.push({ id: uid(), code: nextCode(), text: '', note: '' }); draw(); const ins = app.querySelectorAll('#qList input[data-i]'); if (ins.length) ins[ins.length - 1].focus(); };
     app.querySelector('#saveQ').onclick = () => {
+      // 输入框里还没按回车的关键词，也一起算上
+      const pending = (app.querySelector('#kwIn') || {}).value || '';
+      pending.split(/[,，;；]/).map((x) => x.trim()).filter(Boolean).forEach((v) => { if (!kwDraft.some((k) => k.toLowerCase() === v.toLowerCase())) kwDraft.push(v); });
       draft = draft.filter((q) => q.text.trim());
-      const same = JSON.stringify(draft.map((q) => [q.id, q.text, (q.note || '').trim()])) === JSON.stringify(d.questions.map((q) => [q.id, q.text, (q.note || '').trim()]));
-      if (same) { msg('没有改动'); draw(); return; }
-      if (d.questions.length) d.questionHistory.unshift({ date: new Date().toISOString(), questions: d.questions });
+      const sig = (qs, kw) => JSON.stringify([qs.map((q) => [q.id, q.text, (q.note || '').trim()]), kw]);
+      if (sig(draft, kwDraft) === sig(d.questions, d.keywords)) { msg('没有改动'); draw(); drawKw(); return; }
+      if (d.questions.length || d.keywords.length) d.questionHistory.unshift({ date: new Date().toISOString(), questions: d.questions, keywords: d.keywords.slice() });
+      d.keywords = kwDraft.slice();
       const keep = new Set(draft.map((q) => q.id));
       Object.values(d.items).forEach((it) => { it.questionIds = (it.questionIds || []).filter((id) => id === 'unsure' || keep.has(id)); });
       d.questions = draft.map((q) => ({ id: q.id, code: q.code, text: q.text.trim(), note: (q.note || '').trim() }));
@@ -1034,6 +1075,7 @@ ${head || '（见附件）'}
     const hs = d.questionHistory || [];
     hist.innerHTML = hs.length ? hs.map((h) => `
       <details><summary>${esc(fmtDate(h.date))} 之前的版本</summary>
+        ${h.keywords ? `<div class="meta-line" style="margin:6px 0">关键词：${h.keywords.length ? h.keywords.map(esc).join('、') : '（没有）'}</div>` : ''}
         <ul>${h.questions.map((q) => `<li><b>${esc(q.code)}</b>：${esc(q.text)}${q.note ? `<div class="meta-line" style="white-space:pre-wrap">${esc(q.note)}</div>` : ''}</li>`).join('')}</ul>
       </details>`).join('') : '<div class="meta-line">还没有修改过。以后每次修改，旧版本都会出现在这里。几个月后回头看，你能看到自己的问题是怎么一步步变清楚的。</div>';
   }
@@ -1066,6 +1108,8 @@ ${head || '（见附件）'}
     box.querySelectorAll('.sb-proj').forEach((el) => {
       el.onclick = (e) => {
         if (e.target.closest('[data-pjmore]')) return;
+        if (qDirty && !confirm('关键词或研究问题还有没保存的修改，切换项目的话这些修改会丢掉。确定切换？')) return;
+        qDirty = false;
         S.setCur(el.dataset.pj);
         const pg = (location.hash || '').split('/')[1];
         if (['list', 'questions'].includes(pg)) route(); else location.hash = '#/list';
@@ -1373,6 +1417,7 @@ ${head || '（见附件）'}
   window.addEventListener('online', () => { if (S.getSync()) S.pull(); });
   setInterval(() => { if (S.getSync() && S.syncStatus === 'error' && document.visibilityState === 'visible') S.pull(); }, 60000);
   window.addEventListener('beforeunload', (e) => {
+    if (qDirty) { e.preventDefault(); e.returnValue = ''; return; }
     if (S.getSync() && S.dirty) { e.preventDefault(); e.returnValue = ''; }
   });
 
