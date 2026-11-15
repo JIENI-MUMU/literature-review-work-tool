@@ -452,8 +452,10 @@
   function ta(p, key, rows) {
     return `<div class="field">${label(key)}<textarea data-f="${key}" rows="${rows || 3}" placeholder="${esc(H[key].placeholder || '')}">${esc(p[key])}</textarea></div>`;
   }
+  // 文字格子都用多行框：回车换行，内容多了框自动变高（年份除外）
   function inp(p, key) {
-    return `<div class="field">${label(key)}<input type="text" data-f="${key}" placeholder="${esc(H[key].placeholder || '')}" value="${esc(p[key])}"></div>`;
+    if (key === 'year') return `<div class="field">${label(key)}<input type="text" data-f="${key}" placeholder="${esc(H[key].placeholder || '')}" value="${esc(p[key])}"></div>`;
+    return ta(p, key, 1);
   }
 
   // 笔记卡右上角的保存状态：告诉你数据到底存到哪了
@@ -701,13 +703,14 @@
       while (p.quotes.length < 3) p.quotes.push({ text: '', page: '' }); // 默认三个空格子
       box.innerHTML = p.quotes.map((q, i) => `
         <div class="quote-row">
-          <input type="text" data-qi="${i}" data-k="text" placeholder="原话" value="${esc(q.text)}">
+          <textarea data-qi="${i}" data-k="text" rows="1" placeholder="原话">${esc(q.text)}</textarea>
           <input type="text" data-qi="${i}" data-k="page" placeholder="页码（必填）" value="${esc(q.page)}">
           <button type="button" class="small x-btn" data-qdel="${i}" title="删掉这一条">×</button>
         </div>`).join('');
       box.querySelectorAll('[data-qi]').forEach((el) => {
-        el.oninput = () => { p.quotes[+el.dataset.qi][el.dataset.k] = el.value; touch(); drawNav(); };
+        el.oninput = () => { p.quotes[+el.dataset.qi][el.dataset.k] = el.value; if (el.tagName === 'TEXTAREA') { el.style.height = 'auto'; el.style.height = (el.scrollHeight + 2) + 'px'; } touch(); drawNav(); };
       });
+      requestAnimationFrame(() => box.querySelectorAll('textarea').forEach((el) => { if (el.offsetParent) { el.style.height = 'auto'; el.style.height = (el.scrollHeight + 2) + 'px'; } }));
       box.querySelectorAll('[data-qdel]').forEach((b) => {
         b.onclick = () => { p.quotes.splice(+b.dataset.qdel, 1); drawQuotes(); touch(); drawNav(); };
       });
@@ -1019,8 +1022,7 @@ ${head || '（见附件）'}
       const fitTa = (el) => { el.style.height = 'auto'; el.style.height = (el.scrollHeight + 2) + 'px'; };
       box.querySelectorAll('textarea[data-i]').forEach((el) => {
         fitTa(el);
-        el.oninput = () => { draft[+el.dataset.i].text = el.value.replace(/\n/g, ' '); fitTa(el); msg('有未保存的修改'); };
-        el.onkeydown = (e) => { if (e.key === 'Enter') e.preventDefault(); };
+        el.oninput = () => { draft[+el.dataset.i].text = el.value; fitTa(el); msg('有未保存的修改'); };
       });
       box.querySelectorAll('textarea[data-ni]').forEach((el) => {
         const fit = () => fitTa(el);
