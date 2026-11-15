@@ -370,7 +370,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 .unread-note.done { color: #2e7d4f; }
 /* 研究问题下面的解释栏 */
 .q-block { margin-bottom: 14px; }
-.q-block .q-item { margin-bottom: 6px; }
+.q-block .q-item { margin-bottom: 6px; align-items: flex-start; }
+.q-item .q-no { padding-top: 7px; }
+.q-text { flex: 1; min-width: 0; min-height: 0; resize: none; overflow: hidden; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
 .q-note { display: block; width: calc(100% - 52px); margin-left: 52px; min-height: 0; resize: none; overflow: hidden; font-size: 13px; color: #3a3e44; }
 @media (max-width: 720px) { .q-note { width: 100%; margin-left: 0; } }
 /* 关键词：输入框在上，标签列在下面 */

@@ -1011,14 +1011,19 @@ ${head || '（见附件）'}
         <div class="q-block">
           <div class="q-item">
             <span class="q-no">${esc(q.code)}</span>
-            <input type="text" data-i="${i}" value="${esc(q.text)}" placeholder="${esc(H.question.placeholder)}">
+            <textarea class="q-text" data-i="${i}" rows="1" placeholder="${esc(H.question.placeholder)}">${esc(q.text)}</textarea>
             <button type="button" class="small danger" data-del="${i}">删除</button>
           </div>
           <textarea class="q-note" data-ni="${i}" rows="2" placeholder="${esc(H.questionNote.placeholder)}">${esc(q.note || '')}</textarea>
         </div>`).join('') : '<div class="meta-line" style="margin-bottom:10px">还没有问题。从你的 RP 里挑两三个，用大白话写下来。</div>';
-      box.querySelectorAll('input[data-i]').forEach((el) => { el.oninput = () => { draft[+el.dataset.i].text = el.value; msg('有未保存的修改'); }; });
+      const fitTa = (el) => { el.style.height = 'auto'; el.style.height = (el.scrollHeight + 2) + 'px'; };
+      box.querySelectorAll('textarea[data-i]').forEach((el) => {
+        fitTa(el);
+        el.oninput = () => { draft[+el.dataset.i].text = el.value.replace(/\n/g, ' '); fitTa(el); msg('有未保存的修改'); };
+        el.onkeydown = (e) => { if (e.key === 'Enter') e.preventDefault(); };
+      });
       box.querySelectorAll('textarea[data-ni]').forEach((el) => {
-        const fit = () => { el.style.height = 'auto'; el.style.height = (el.scrollHeight + 2) + 'px'; };
+        const fit = () => fitTa(el);
         fit(); el.oninput = () => { draft[+el.dataset.ni].note = el.value; fit(); msg('有未保存的修改'); };
       });
       box.querySelectorAll('[data-del]').forEach((b) => {
@@ -1056,7 +1061,7 @@ ${head || '（见附件）'}
     };
     drawKw();
     app.querySelector('#kwBox').onclick = (e) => { if (e.target.id === 'kwBox') app.querySelector('#kwIn').focus(); };
-    app.querySelector('#addQ').onclick = () => { draft.push({ id: uid(), code: nextCode(), text: '', note: '' }); draw(); const ins = app.querySelectorAll('#qList input[data-i]'); if (ins.length) ins[ins.length - 1].focus(); };
+    app.querySelector('#addQ').onclick = () => { draft.push({ id: uid(), code: nextCode(), text: '', note: '' }); draw(); const ins = app.querySelectorAll('#qList textarea[data-i]'); if (ins.length) ins[ins.length - 1].focus(); };
     app.querySelector('#saveQ').onclick = () => {
       // 输入框里还没按回车的关键词，也一起算上
       const pending = (app.querySelector('#kwIn') || {}).value || '';
