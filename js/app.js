@@ -506,7 +506,7 @@
         </div>
         <div class="field">${label('questions')}
           <div class="checks">
-            ${qs.map((q) => `<label title="${esc(q.text)}"><input type="checkbox" data-q="${q.id}" ${(p.questionIds || []).includes(q.id) ? 'checked' : ''}> ${esc(q.code)}：${esc(q.text.length > 30 ? q.text.slice(0, 30) + '…' : q.text)}</label>`).join('')}
+            ${qs.map((q) => `<label title="${esc(q.text + (q.note ? '\n\n' + q.note : ''))}"><input type="checkbox" data-q="${q.id}" ${(p.questionIds || []).includes(q.id) ? 'checked' : ''}> ${esc(q.code)}：${esc(q.text.length > 30 ? q.text.slice(0, 30) + '…' : q.text)}</label>`).join('')}
             <label><input type="checkbox" data-q="unsure" ${(p.questionIds || []).includes('unsure') ? 'checked' : ''}> 暂不确定</label>
             <span class="proj-tag">只属于项目「${esc(P().name)}」</span>
           </div>
@@ -994,12 +994,19 @@ ${head || '（见附件）'}
     const draw = () => {
       const box = app.querySelector('#qList');
       box.innerHTML = draft.length ? draft.map((q, i) => `
-        <div class="q-item">
-          <span class="q-no">${esc(q.code)}</span>
-          <input type="text" data-i="${i}" value="${esc(q.text)}" placeholder="${esc(H.question.placeholder)}">
-          <button type="button" class="small danger" data-del="${i}">删除</button>
+        <div class="q-block">
+          <div class="q-item">
+            <span class="q-no">${esc(q.code)}</span>
+            <input type="text" data-i="${i}" value="${esc(q.text)}" placeholder="${esc(H.question.placeholder)}">
+            <button type="button" class="small danger" data-del="${i}">删除</button>
+          </div>
+          <textarea class="q-note" data-ni="${i}" rows="2" placeholder="${esc(H.questionNote.placeholder)}">${esc(q.note || '')}</textarea>
         </div>`).join('') : '<div class="meta-line" style="margin-bottom:10px">还没有问题。从你的 RP 里挑两三个，用大白话写下来。</div>';
-      box.querySelectorAll('input').forEach((el) => { el.oninput = () => { draft[+el.dataset.i].text = el.value; msg('有未保存的修改'); }; });
+      box.querySelectorAll('input[data-i]').forEach((el) => { el.oninput = () => { draft[+el.dataset.i].text = el.value; msg('有未保存的修改'); }; });
+      box.querySelectorAll('textarea[data-ni]').forEach((el) => {
+        const fit = () => { el.style.height = 'auto'; el.style.height = (el.scrollHeight + 2) + 'px'; };
+        fit(); el.oninput = () => { draft[+el.dataset.ni].note = el.value; fit(); msg('有未保存的修改'); };
+      });
       box.querySelectorAll('[data-del]').forEach((b) => {
         b.onclick = () => {
           const q = draft[+b.dataset.del];
@@ -1011,15 +1018,15 @@ ${head || '（见附件）'}
     };
     const msg = (t) => { app.querySelector('#qMsg').textContent = t; };
     draw();
-    app.querySelector('#addQ').onclick = () => { draft.push({ id: uid(), code: nextCode(), text: '' }); draw(); const ins = app.querySelectorAll('#qList input'); if (ins.length) ins[ins.length - 1].focus(); };
+    app.querySelector('#addQ').onclick = () => { draft.push({ id: uid(), code: nextCode(), text: '', note: '' }); draw(); const ins = app.querySelectorAll('#qList input[data-i]'); if (ins.length) ins[ins.length - 1].focus(); };
     app.querySelector('#saveQ').onclick = () => {
       draft = draft.filter((q) => q.text.trim());
-      const same = JSON.stringify(draft.map((q) => [q.id, q.text])) === JSON.stringify(d.questions.map((q) => [q.id, q.text]));
+      const same = JSON.stringify(draft.map((q) => [q.id, q.text, (q.note || '').trim()])) === JSON.stringify(d.questions.map((q) => [q.id, q.text, (q.note || '').trim()]));
       if (same) { msg('没有改动'); draw(); return; }
       if (d.questions.length) d.questionHistory.unshift({ date: new Date().toISOString(), questions: d.questions });
       const keep = new Set(draft.map((q) => q.id));
       Object.values(d.items).forEach((it) => { it.questionIds = (it.questionIds || []).filter((id) => id === 'unsure' || keep.has(id)); });
-      d.questions = draft.map((q) => ({ id: q.id, code: q.code, text: q.text.trim() }));
+      d.questions = draft.map((q) => ({ id: q.id, code: q.code, text: q.text.trim(), note: (q.note || '').trim() }));
       S.save(); toast('已保存，旧版本已存进历史'); renderQuestions();
     };
 
@@ -1027,13 +1034,10 @@ ${head || '（见附件）'}
     const hs = d.questionHistory || [];
     hist.innerHTML = hs.length ? hs.map((h) => `
       <details><summary>${esc(fmtDate(h.date))} 之前的版本</summary>
-        <ul>${h.questions.map((q) => `<li><b>${esc(q.code)}</b>：${esc(q.text)}</li>`).join('')}</ul>
+        <ul>${h.questions.map((q) => `<li><b>${esc(q.code)}</b>：${esc(q.text)}${q.note ? `<div class="meta-line" style="white-space:pre-wrap">${esc(q.note)}</div>` : ''}</li>`).join('')}</ul>
       </details>`).join('') : '<div class="meta-line">还没有修改过。以后每次修改，旧版本都会出现在这里。几个月后回头看，你能看到自己的问题是怎么一步步变清楚的。</div>';
   }
 
-  // =====================================================
-  // 横向复盘
-  // =====================================================
   // =====================================================
   // 左边栏：项目列表 + 文献库 / 使用说明 / 设置
   // =====================================================

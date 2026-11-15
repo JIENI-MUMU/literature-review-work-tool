@@ -368,3 +368,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 /* “全文已读”勾选框和提示放在一行；勾上变绿 */
 .read-line { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding-top: 4px; }
 .unread-note.done { color: #2e7d4f; }
+/* 研究问题下面的解释栏 */
+.q-block { margin-bottom: 14px; }
+.q-block .q-item { margin-bottom: 6px; }
+.q-note { display: block; width: calc(100% - 52px); margin-left: 52px; min-height: 0; resize: none; overflow: hidden; font-size: 13px; color: #3a3e44; }
+@media (max-width: 720px) { .q-note { width: 100%; margin-left: 0; } }
