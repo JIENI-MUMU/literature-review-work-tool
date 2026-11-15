@@ -1037,8 +1037,9 @@ ${head || '（见附件）'}
     // 关键词：和研究问题一起，点“保存修改”才保存，旧版本进修改历史
     const drawKw = () => {
       const box = app.querySelector('#kwBox');
-      box.innerHTML = kwDraft.map((k, i) => `<span class="kw">${esc(k)}<button type="button" data-kdel="${i}" title="删除">×</button></span>`).join('') +
-        '<input type="text" id="kwIn" placeholder="输入关键词，按回车" autocomplete="off">';
+      // 输入框在上，已添加的关键词在下面
+      box.innerHTML = '<input type="text" id="kwIn" placeholder="输入关键词，按回车添加（可以用逗号一次加几个）" autocomplete="off">' +
+        `<div class="kw-list">${kwDraft.length ? kwDraft.map((k, i) => `<span class="kw">${esc(k)}<button type="button" data-kdel="${i}" title="删除">×</button></span>`).join('') : '<span class="meta-line">还没有关键词</span>'}</div>`;
       box.querySelectorAll('[data-kdel]').forEach((b) => { b.onclick = () => { kwDraft.splice(+b.dataset.kdel, 1); msg('有未保存的修改'); drawKw(); app.querySelector('#kwIn').focus(); }; });
       const inp = box.querySelector('#kwIn');
       inp.onkeydown = (e) => {
