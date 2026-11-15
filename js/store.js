@@ -20,7 +20,7 @@
  *   papers: [{
  *     id, createdAt, updatedAt,
  *     doi, title, titleZh, authors, year, journal, crossrefType,
- *     sourceType,             // 'peer' | 'official' | 'grey' | 'media' | 'other' | ''
+ *     sourceType,             // 'peer' | 'journal' | 'official' | 'grey' | 'media' | 'other' | ''
  *     questionIds: [],        // 问题 id，或 'unsure'
  *     fullRead: false,
  *     aQuestion,                                   // 研究问题

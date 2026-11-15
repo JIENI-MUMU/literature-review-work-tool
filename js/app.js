@@ -447,7 +447,7 @@
   // =====================================================
   // 笔记卡
   // =====================================================
-  const SOURCE_TYPES = [['', '— 请选择 —'], ['peer', '同行评审论文'], ['official', '官方文件'], ['grey', '灰色文献'], ['media', '行业媒体'], ['other', '其他']];
+  const SOURCE_TYPES = [['', '— 请选择 —'], ['peer', '同行评审论文'], ['journal', '期刊文章'], ['official', '官方文件'], ['grey', '灰色文献'], ['media', '行业媒体'], ['other', '其他']];
 
   function ta(p, key, rows) {
     return `<div class="field">${label(key)}<textarea data-f="${key}" rows="${rows || 3}" placeholder="${esc(H[key].placeholder || '')}">${esc(p[key])}</textarea></div>`;
